@@ -240,7 +240,26 @@
                 if (panelData.title) {
                     const header = document.createElement('div');
                     header.className = 'panel-header';
-                    header.innerText = panelData.title;
+                    header.style.display = 'flex';
+                    header.style.justifyContent = 'space-between';
+                    header.style.alignItems = 'center';
+
+                    let titleSpan = document.createElement('span');
+                    titleSpan.innerText = panelData.title;
+                    header.appendChild(titleSpan);
+
+                    if (panelData.sourceUrl) {
+                        let linkSrc = document.createElement('a');
+                        linkSrc.href = panelData.sourceUrl;
+                        linkSrc.target = '_blank';
+                        linkSrc.title = 'View Source Document / Data';
+                        linkSrc.style.color = 'var(--text-secondary)';
+                        linkSrc.style.display = 'flex';
+                        linkSrc.style.alignItems = 'center';
+                        linkSrc.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.7; transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
+                        header.appendChild(linkSrc);
+                    }
+
                     panel.appendChild(header);
                 } else {
                     panel.style.padding = '0';
