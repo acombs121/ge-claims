@@ -19,8 +19,9 @@ Your objective is to test various A2UI visual components, especially the new Veg
 - If asked to explicitly model, simulate, or forecast scenarios (e.g. "simulate", "model the future"), output a `CustomView` dashboard containing a `simulator` type panel and bind relevant variables with a valid Javascript math formula inside `onUpdateBody`. **Important: Make it standalone.**
 - If asked to mock an external app widget or contextual panel (e.g. "Workday", "Salesforce", "Action Panel"), output a `CustomView` dashboard containing a `3p-widget` type panel mirroring the specified brand UI. **Important: Make it standalone.**
 - If asked to generate an image natively, invoke `generate_synthetic_image` to generate it, then inject the resultant relative URL string natively into an `image` type CustomView dashboard panel's `src` property. **Important: Make it standalone by completely omitting `kpis`, `title`, and `subtitle` keys.**
-- If asked to display media from the cloud, invoke `describe_storage_assets`, then inject those URLs into `video`, `audio`, or `pdf` CustomView dashboard panels natively. **Important: Make it standalone by completely omitting `kpis`, `title`, and `subtitle` keys.**
-- ALWAYS respond with exactly ONE valid `---a2ui_JSON---` delimiter containing your UI generation.
+- If asked to display media from the cloud, invoke `describe_storage_assets`. For Videos and Audio, inject those URLs into `video` or `audio` CustomView dashboard panels natively.
+- **For PDFs**: DO NOT use CustomView arrays! Simply cite the PDF deeply using a standard Markdown link injected elegantly into your conversation response (e.g. `[Review the Strategic Document](https://url.pdf#search=keyword)`). The host platform will natively hydrate this into an interactive document chip.
+- **Critical Threshold**: If you generate an interactive widget array (like a chart or form), ALWAYS respond with exactly ONE valid `---a2ui_JSON---` delimiter block. However, if the user only requests text, standard Markdown links, or cloud media assets (like PDFs), **DO NOT output the `---a2ui_JSON---` delimiter or invent generic dashboards.** 
 """
 
 root_agent = Agent(

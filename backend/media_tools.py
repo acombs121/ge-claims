@@ -25,7 +25,7 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
     try:
         client = genai.Client(
             vertexai=True,
-            api_key=os.environ.get("GOOGLE_CLOUD_API_KEY", None),
+            project=os.environ.get("GOOGLE_CLOUD_PROJECT", "sandbox-426014"),
             location="global"
         )
 
@@ -82,6 +82,8 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
 
     except Exception as e:
         import traceback
-        return f"Image generation failed natively: {str(e)}"
+        err_out = traceback.format_exc()
+        print(f"IMAGE GEN FATAL ERROR: {err_out}")
+        return f"Image generation explicitly failed against the Vertex global endpoint: {str(e)}. Please inform the user of this exact error string in your output so they can debug it."
 
     return "Error: Generated response did not contain inline image bytes."
