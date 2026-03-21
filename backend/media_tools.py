@@ -52,9 +52,11 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
 
         generate_content_config = types.GenerateContentConfig(
             temperature = 1,
-            response_modalities = ["IMAGE"],
+            top_p = 0.95,
+            max_output_tokens = 32768,
+            response_modalities = ["TEXT", "IMAGE"],
             image_config=types.ImageConfig(
-              aspect_ratio="auto",
+              aspect_ratio="1:1",
               image_size="1K",
               output_mime_type="image/png",
             )
