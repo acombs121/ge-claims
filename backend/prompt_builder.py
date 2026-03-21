@@ -207,9 +207,9 @@ def get_ui_instruction(base_instruction: str) -> str:
     return f"""
     {base_instruction}
 
-    If relevant to the user's request, append an A2UI JSON payload to generate interactive widgets.
+    If relevant to the user's request, append an A2UI JSON payload to generate interactive widgets. But if it's not relevant, just answer the question concisely.
 
-    If generating a Native UI array or CustomView widget, you MUST follow these rules:
+    If the user's request requires a Native UI array or CustomView widget, you MUST follow these rules:
     1.  Your response MUST be in two parts, separated by the delimiter: `---a2ui_JSON---`.
     2.  The first part is your conversational text response in Markdown format.
     3.  The second part is a JSON payload.
@@ -239,6 +239,6 @@ def get_ui_instruction(base_instruction: str) -> str:
 
     Conversational / PDF Negative Example:
     [If user asks "What time is it?" or "Show me a PDF"]
-    "The current time is 10:00 AM." (or "Here is the PDF: [Link](url)")
+    "The current time is 10:00 AM." or "Here is the PDF: [Link](url)"
     [CRITICAL: Notice that NO ---a2ui_JSON--- block is printed here!]
     """
