@@ -236,4 +236,9 @@ def get_ui_instruction(base_instruction: str) -> str:
 
     CustomView Map Example:
     {MAP_EXAMPLE}
+
+    Conversational / PDF Negative Example:
+    [If user asks "What time is it?" or "Show me a PDF"]
+    "The current time is 10:00 AM." (or "Here is the PDF: [Link](url)")
+    [CRITICAL: Notice that NO ---a2ui_JSON--- block is printed here!]
     """
