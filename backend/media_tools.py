@@ -29,9 +29,8 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
             location="global"
         )
 
-        contents_parts = []
+        contents_parts = [types.Part.from_text(text=prompt)]
         
-        # Autonomously bind user-uploaded image fragments from the active context
         if tool_context:
             try:
                 artifact_keys = await tool_context.list_artifacts()
@@ -46,8 +45,9 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
             except Exception as e:
                 pass
         
-        # Append target text prompt
-        contents_parts.append(types.Part.from_text(text=prompt))
+        # print boundary logic natively to Cloud Run logging
+        print(f"A2UI-IMAGE-DEBUG | Executing Vertex Payload. Text: '{prompt}'. Encoded Vision Parts: {len(contents_parts)-1}")
+
         contents = [types.Content(role="user", parts=contents_parts)]
 
         generate_content_config = types.GenerateContentConfig(
