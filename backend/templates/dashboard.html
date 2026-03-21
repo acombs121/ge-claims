@@ -509,11 +509,12 @@
                 } else if (panelData.type === 'pdf') {
                     let pdfUrl = panelData.data.src || panelData.data;
                     if (panelData.data.search) {
-                         pdfUrl += `#search="${encodeURIComponent(panelData.data.search)}"`;
+                         const cleanSearch = panelData.data.search.replace(/"/g, '');
+                         pdfUrl += `#search=${encodeURIComponent(cleanSearch)}`;
                     } else if (panelData.data.page) {
                          pdfUrl += `#page=${encodeURIComponent(panelData.data.page)}`;
                     }
-                    panel.innerHTML += `<div style="height:${isStandalone?'calc(100vh - 90px)':'600px'};"><iframe src="${pdfUrl}" width="100%" height="100%" style="border:none; border-radius:8px;"></iframe></div>`;
+                    panel.innerHTML += `<div style="height:${isStandalone?'calc(100vh - 90px)':'600px'};"><embed src="${pdfUrl}" width="100%" height="100%" type="application/pdf" style="border:none; border-radius:8px;"></embed></div>`;
                     mainGrid.appendChild(panel);
                 }
             });
