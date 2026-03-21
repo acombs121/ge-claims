@@ -139,12 +139,15 @@ The core rendering environment revolves around `backend/templates/dashboard.html
 - **`form`**: Constructs a completely dynamic HTML `<form>`. The `submit` button natively bridges a postMessage payload *back* up to Agent-Stage/GE for true bi-directional functionality.
 - **`chart` / `table`**: Standard Chart.js panels and HTML tabular arrays.
 
-*(For simple, isolated elements, the Agent is also instructed on basic Native A2UI Arrays for `DataGrid` and `VegaChart`).*
+- **`vega`**: Natively processes complex Vega and Vega-Lite chart schemas inside the `CustomView`, enabling advanced multidimensional data storytelling across the dashboard without writing code.
 
-### 2. Generative Media Pipelines
-The seed securely mounts the `google-genai` Python SDK. You can instruct the agent to generate completely new images via **Gemini 3.1 Flash Image Preview**. 
-- The backend parses the byte stream, base64 encodes it, and hands the LLM a clean `data:image/` string.
-- The LLM injects that string into an `image` grid block in the dashboard, rendering generative media *instantly*.
+*(For simple, isolated elements, the Agent is configured to intuitively auto-detect "standalone" widgets and explicitly scale their viewport heights to 100% bounds dynamically.)*
+
+### 2. Multimodal Generative Media Pipelines
+The seed securely mounts the `google-genai` Python SDK against the `global` Vertex AI registry. You can instruct the agent to generate completely new images via the **Gemini 3.1 Flash Image Preview** endpoint. 
+- You can freely pass uploaded images (`.jpg`, `.png`) alongside text descriptions. The `ToolContext` autonomously natively extracts user uploads and injects them seamlessly alongside the target text array!
+- The backend natively parses the bytes, base64 encodes them, and hands the LLM a clean `data:image/` string.
+- The LLM injects that string into an `image` grid block in the dashboard, rendering generative media gracefully.
 
 ### 3. Cloud Storage Asset Mounting
 The backend provides architectural tooling designed to authenticate with Google Cloud Storage (`storage.Client()`). The dashboard engine has native wrappers `video`, `audio`, and `pdf`. The agent can seamlessly query a bucket dataset and pass the resultant cloud URLs directy into the dashboard for users to playback or verify.

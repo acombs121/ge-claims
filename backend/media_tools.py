@@ -26,10 +26,11 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
         client = genai.Client(
             vertexai=True,
             api_key=os.environ.get("GOOGLE_CLOUD_API_KEY", None),
+            location="global"
         )
 
         contents_parts = []
-
+        
         # Autonomously bind user-uploaded image fragments from the active context
         if tool_context:
             try:
@@ -52,45 +53,24 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
             image_config=types.ImageConfig(aspect_ratio="auto", image_size="1K", output_mime_type="image/jpeg")
         )
 
-        try:
-            response = client.models.generate_content(
-                model="gemini-3.1-flash-image-preview",
-                contents=contents,
-                config=generate_content_config,
-            )
+        response = client.models.generate_content(
+            model="gemini-3.1-flash-image-preview",
+            contents=contents,
+            config=generate_content_config,
+        )
 
-            for candidate in response.candidates:
-                if hasattr(candidate, 'content') and candidate.content and candidate.content.parts:
-                    for part in candidate.content.parts:
-                        if hasattr(part, 'inline_data') and part.inline_data:
-                            b64 = base64.b64encode(part.inline_data.data).decode('utf-8')
-                            return f"data:{part.inline_data.mime_type};base64,{b64}"
-                        elif hasattr(part, 'image') and part.image:
-                            b64 = base64.b64encode(part.image.image_bytes).decode('utf-8')
-                            return f"data:image/jpeg;base64,{b64}"
-
-        except Exception as e:
-            if "404" in str(e) or "not found" in str(e).lower():
-                # Graceful degradation fallback if the user's GCP project is not yet whitelisted 
-                # for the experimental multimodal Gemini Image Previews.
-                imagen_resp = client.models.generate_images(
-                    model="imagen-3.0-generate-002",
-                    prompt=prompt,
-                    config=types.GenerateImagesConfig(
-                        number_of_images=1, 
-                        output_mime_type="image/jpeg",
-                        aspect_ratio="1:1"
-                    )
-                )
-                if imagen_resp.generated_images:
-                    img = imagen_resp.generated_images[0]
-                    b64 = base64.b64encode(img.image.image_bytes).decode('utf-8')
-                    return f"data:image/jpeg;base64,{b64}"
-            
-            raise e
-
-        return "Error: Generated response did not contain inline image bytes."
+        for candidate in response.candidates:
+            if hasattr(candidate, 'content') and candidate.content and candidate.content.parts:
+                for part in candidate.content.parts:
+                    if hasattr(part, 'inline_data') and part.inline_data:
+                        b64 = base64.b64encode(part.inline_data.data).decode('utf-8')
+                        return f"data:{part.inline_data.mime_type};base64,{b64}"
+                    elif hasattr(part, 'image') and part.image:
+                        b64 = base64.b64encode(part.image.image_bytes).decode('utf-8')
+                        return f"data:image/jpeg;base64,{b64}"
 
     except Exception as e:
         import traceback
         return f"Image generation failed natively: {str(e)}"
+
+    return "Error: Generated response did not contain inline image bytes."

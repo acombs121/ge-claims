@@ -230,7 +230,7 @@
             const textColor = isDark ? '#94a3b8' : '#64748b';
 
             const isStandalone = !data.title && !data.subtitle && (!data.kpis || data.kpis.length === 0) && gridLayout.length === 1;
-            const dynamicPanelHeight = isStandalone ? 'calc(100vh - 40px)' : '350px';
+            const dynamicPanelHeight = isStandalone ? 'calc(100vh - 90px)' : '350px';
 
             gridLayout.forEach(panelData => {
                 const panel = document.createElement('div');
@@ -252,7 +252,7 @@
                 if (panelData.type === 'chart') {
                     const canvasId = 'chartCanvas_' + (chartIndex++);
                     const chartContainer = document.createElement('div');
-                    chartContainer.style = `position: relative; height: ${isStandalone ? 'calc(100vh - 40px)' : '250px'};`;
+                    chartContainer.style = `position: relative; height: ${isStandalone ? 'calc(100vh - 90px)' : '250px'};`;
                     chartContainer.innerHTML = `<canvas id="${canvasId}"></canvas>`;
                     panel.appendChild(chartContainer);
                     mainGrid.appendChild(panel);
@@ -434,11 +434,11 @@
                     }, 50);
 
                 } else if (panelData.type === 'image') {
-                    panel.innerHTML += `<div style="text-align:center; height:${isStandalone?'100%':'auto'}; display:flex; align-items:center; justify-content:center;"><img src="${panelData.data.src || panelData.data}" alt="${panelData.data.alt || 'GenAI Image'}" style="max-height: ${isStandalone?'calc(100vh - 40px)':'500px'}; max-width: 100%; border-radius: 8px; object-fit: contain;"></div>`;
+                    panel.innerHTML += `<div style="text-align:center; height:${isStandalone?'100%':'auto'}; display:flex; align-items:center; justify-content:center;"><img src="${panelData.data.src || panelData.data}" alt="${panelData.data.alt || 'GenAI Image'}" style="max-height: ${isStandalone?'calc(100vh - 90px)':'500px'}; max-width: 100%; border-radius: 8px; object-fit: contain;"></div>`;
                     mainGrid.appendChild(panel);
 
                 } else if (panelData.type === 'video') {
-                    panel.innerHTML += `<div style="text-align:center; height:${isStandalone?'100%':'auto'}; display:flex; align-items:center; justify-content:center;"><video controls style="max-height: ${isStandalone?'calc(100vh - 40px)':'500px'}; max-width: 100%; border-radius: 8px;"><source src="${panelData.data.src || panelData.data}" type="${panelData.data.mime_type || 'video/mp4'}">Your browser does not support the video tag.</video></div>`;
+                    panel.innerHTML += `<div style="text-align:center; height:${isStandalone?'100%':'auto'}; display:flex; align-items:center; justify-content:center;"><video controls style="max-height: ${isStandalone?'calc(100vh - 90px)':'500px'}; max-width: 100%; border-radius: 8px;"><source src="${panelData.data.src || panelData.data}" type="${panelData.data.mime_type || 'video/mp4'}">Your browser does not support the video tag.</video></div>`;
                     mainGrid.appendChild(panel);
 
                 } else if (panelData.type === 'audio') {
@@ -446,7 +446,7 @@
                     mainGrid.appendChild(panel);
 
                 } else if (panelData.type === 'pdf') {
-                    panel.innerHTML += `<div style="height:${isStandalone?'calc(100vh - 40px)':'450px'};"><iframe src="${panelData.data.src || panelData.data}" width="100%" height="100%" style="border:none; border-radius:8px;"></iframe></div>`;
+                    panel.innerHTML += `<div style="height:${isStandalone?'calc(100vh - 90px)':'450px'};"><iframe src="${panelData.data.src || panelData.data}" width="100%" height="100%" style="border:none; border-radius:8px;"></iframe></div>`;
                     mainGrid.appendChild(panel);
                 }
             });
