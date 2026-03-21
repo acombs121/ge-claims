@@ -68,6 +68,22 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
       injected_script = f"<script>window.INJECTED_DATA = {json.dumps(data)};</script>"
       html_injected = html_template.replace('</head>', f'{injected_script}\n</head>')
       
+      # Dynamically size the viewport frame height based on standalone status
+      frame_height = 600
+      is_standalone = not data.get('kpis') and not data.get('title') and not data.get('subtitle')
+      if is_standalone:
+          grid_items = data.get('grid', [])
+          if len(grid_items) == 1:
+              item_type = grid_items[0].get('type', '')
+              if item_type == 'image':
+                  frame_height = 400
+              elif item_type == 'video':
+                  frame_height = 350
+              elif item_type in ['d3-network', 'chart', 'map-heatmap', 'table']:
+                  frame_height = 320
+              else:
+                  frame_height = 400
+
       return [
         {
           "beginRendering": {
@@ -88,7 +104,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                 "component": {
                   "WebFrame": {
                     "htmlContent": { "literalString": html_injected },
-                    "height": 600
+                    "height": frame_height
                   }
                 }
               }

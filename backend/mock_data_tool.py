@@ -1,13 +1,4 @@
-import os
-import base64
 from google.adk.tools import ToolContext
-
-# Conditional bindings for GenAI 3.1 Imaging
-try:
-    from google import genai
-    from google.genai import types
-except ImportError:
-    genai = None
 
 def fetch_comprehensive_dashboard_data(tool_context: ToolContext = None) -> dict:
     """Fetches a mock dataset designed to test all major A2UI components (DataGrid, VegaChart, KPIs, WebFrame maps)."""
@@ -64,72 +55,9 @@ def fetch_comprehensive_dashboard_data(tool_context: ToolContext = None) -> dict
         }
     }
 
-def describe_storage_assets(tool_context: ToolContext = None) -> dict:
-    """Returns sample URLs for cloud-hosted images, videos, audio, and pdfs to test frontend media rendering."""
-    return {
-        "sample_video_url": "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-        "sample_audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-        "sample_image_url": "https://storage.googleapis.com/cloud-samples-data/generative-ai/image/woman.jpg",
-        "sample_pdf_url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
-    }
-
 def process_form_submission(payload: dict, tool_context: ToolContext = None) -> str:
     """Mocks a backend system logging an ingested payload correctly piped via Agent-Stage `a2a.action`."""
     print(f"--- BACKEND API RECEIVED FORM PAYLOAD ---")
     print(payload)
     print(f"-----------------------------------------")
     return f"Successfully processed payload containing keys: {list(payload.keys())}!"
-
-def generate_demo_living_room_image(tool_context: ToolContext = None) -> str:
-    """Generates an image via Gemini 3.1 Flash Image Preview from a complex set of Google Cloud Storage asset attachments. Returns a Base64 string for direct CustomView rendering."""
-    if not genai:
-        return "Error: google-genai SDK is not installed or available."
-    
-    try:
-        # vertexai=True uses ADC (gcloud auth) under the hood if GOOGLE_CLOUD_API_KEY isn't present.
-        client = genai.Client(
-            vertexai=True,
-            api_key=os.environ.get("GOOGLE_CLOUD_API_KEY", None),
-            project=os.environ.get("GOOGLE_CLOUD_PROJECT", "your-project-id"),
-            location=os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
-        )
-
-        image1 = types.Part.from_uri(file_uri="gs://cloud-samples-data/generative-ai/image/woman.jpg", mime_type="image/jpeg")
-        image2 = types.Part.from_uri(file_uri="gs://cloud-samples-data/generative-ai/image/suitcase.png", mime_type="image/png")
-        image3 = types.Part.from_uri(file_uri="gs://cloud-samples-data/generative-ai/image/armchair.png", mime_type="image/png")
-        image4 = types.Part.from_uri(file_uri="gs://cloud-samples-data/generative-ai/image/man-in-field.png", mime_type="image/png")
-        image5 = types.Part.from_uri(file_uri="gs://cloud-samples-data/generative-ai/image/shoes.jpg", mime_type="image/jpeg")
-        image6 = types.Part.from_uri(file_uri="gs://cloud-samples-data/generative-ai/image/living-room.png", mime_type="image/png")
-        text1 = types.Part.from_text(text="Generate an image of a woman sitting in a living room with a man. The man is wearing the brown sneakers. The woman is wearing a red version of the sneakers. The woman is sitting in a white armchair with a blue suitcase next to her.")
-
-        contents = [types.Content(role="user", parts=[image1, image2, image3, image4, image5, image6, text1])]
-
-        generate_content_config = types.GenerateContentConfig(
-            temperature = 1,
-            top_p = 0.95,
-            response_modalities = ["IMAGE"],
-            image_config=types.ImageConfig(aspect_ratio="auto", image_size="1K", output_mime_type="image/png")
-        )
-
-        response = client.models.generate_content(
-            model="gemini-3.1-flash-image-preview",
-            contents=contents,
-            config=generate_content_config,
-        )
-
-        # Retrieve bytes natively across part bindings
-        for candidate in response.candidates:
-            if hasattr(candidate, 'content') and candidate.content and candidate.content.parts:
-                for part in candidate.content.parts:
-                    if hasattr(part, 'inline_data') and part.inline_data:
-                        b64 = base64.b64encode(part.inline_data.data).decode('utf-8')
-                        return f"data:{part.inline_data.mime_type};base64,{b64}"
-                    elif hasattr(part, 'image') and part.image:
-                        b64 = base64.b64encode(part.image.image_bytes).decode('utf-8')
-                        return f"data:image/png;base64,{b64}"
-
-        return "Error: Generated response did not contain inline image bytes."
-
-    except Exception as e:
-        import traceback
-        return f"Image generation failed natively: {str(e)}\n\n{traceback.format_exc()}"

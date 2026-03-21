@@ -2,10 +2,9 @@ from google.adk.agents import Agent
 from prompt_builder import get_ui_instruction
 from mock_data_tool import (
     fetch_comprehensive_dashboard_data,
-    describe_storage_assets,
-    process_form_submission,
-    generate_demo_living_room_image
+    process_form_submission
 )
+from media_tools import describe_storage_assets, generate_synthetic_image
 # ------------------------------------------------------------------------------
 # System Instruction (Customize this for your Industry & Use Case)
 # ------------------------------------------------------------------------------
@@ -34,6 +33,6 @@ root_agent = Agent(
         fetch_comprehensive_dashboard_data,
         describe_storage_assets,
         process_form_submission,
-        generate_demo_living_room_image
+        generate_synthetic_image
     ]
 )
