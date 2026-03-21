@@ -140,6 +140,8 @@ The core rendering environment revolves around `backend/templates/dashboard.html
 - **`chart` / `table`**: Standard Chart.js panels and HTML tabular arrays.
 
 - **`vega`**: Natively processes complex Vega and Vega-Lite chart schemas inside the `CustomView`, enabling advanced multidimensional data storytelling across the dashboard without writing code.
+- **`simulator`**: Injects a self-contained Scenario Simulator widget. The Agent models an array of variable controls (sliders) and a bound math formula (`onUpdateBody`) mapped to a target Chart. This empowers users to manipulate sliders and see changes graphically locally without pinging the LLM.
+- **`3p-widget`**: Mocks seamless 3rd-party SaaS integrations (like Salesforce or Workday) by instantiating beautifully native Action Panels (forms/summaries) styled accurately in the designated brand themes.
 
 *(For simple, isolated elements, the Agent is configured to intuitively auto-detect "standalone" widgets and explicitly scale their viewport heights to 100% bounds dynamically.)*
 
@@ -151,6 +153,7 @@ The seed securely mounts the `google-genai` Python SDK against the `global` Vert
 
 ### 3. Cloud Storage Asset Mounting
 The backend provides architectural tooling designed to authenticate with Google Cloud Storage (`storage.Client()`). The dashboard engine has native wrappers `video`, `audio`, and `pdf`. The agent can seamlessly query a bucket dataset and pass the resultant cloud URLs directy into the dashboard for users to playback or verify.
+- *PDF Engine Enhancement*: Deep linking and highlighting are natively parsed! Natively passes `search` parameters to dynamically jump the scrollbar and highlight context whenever the LLM intends to point users directly to an evidence citation inside massive PDFs (`#search="keyword"`).
 
 ---
 
