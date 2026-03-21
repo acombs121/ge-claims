@@ -31,6 +31,25 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
 
         contents_parts = [types.Part.from_text(text=prompt)]
         
+        # Singleton Intercept: Retrieve the exact binary footprint cached by agent_executor over the border
+        tmp_cache_path = "/tmp/a2ui_latest_vision_bytes.bin"
+        if os.path.exists(tmp_cache_path):
+            try:
+                with open(tmp_cache_path, "rb") as f:
+                    image_bytes = f.read()
+                if image_bytes:
+                    mime_type = "image/jpeg"
+                    if image_bytes.startswith(b'\x89PNG'):
+                        mime_type = "image/png"
+                    elif image_bytes.startswith(b'RIFF'):
+                        mime_type = "image/webp"
+                    
+                    vision_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+                    contents_parts.append(vision_part)
+                os.remove(tmp_cache_path) # Clean state for next interaction
+            except Exception as e:
+                print(f"A2UI-IMAGE-DEBUG | Cache fetch error: {e}")
+        
         if tool_context:
             try:
                 artifact_keys = await tool_context.list_artifacts()
