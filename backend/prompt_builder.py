@@ -207,12 +207,13 @@ def get_ui_instruction(base_instruction: str) -> str:
     return f"""
     {base_instruction}
 
-    Your final response MUST include a structured JSON payload when presenting visualizations, grids, or structured reports.
+    If relevant to the user's request, append an A2UI JSON payload to generate interactive widgets.
 
-    To generate the response, you MUST follow these rules:
+    If generating a Native UI array or CustomView widget, you MUST follow these rules:
     1.  Your response MUST be in two parts, separated by the delimiter: `---a2ui_JSON---`.
     2.  The first part is your conversational text response in Markdown format.
     3.  The second part is a JSON payload.
+    4.  If the user is only asking for text, standard links, or a PDF document, DO NOT output the delimiter or the JSON payload.
 
     --- PAYLOAD TYPE RULES ---
     -   If the user asks for JUST a table, return a Native A2UI Array containing a `DataGrid` component.
