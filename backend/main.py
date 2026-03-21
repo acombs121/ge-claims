@@ -88,10 +88,17 @@ request_handler = DefaultRequestHandler(
     task_store=InMemoryTaskStore(),
 )
 
+import os
+from starlette.staticfiles import StaticFiles
+
 app = A2AStarletteApplication(
     agent_card=agent_card,
     http_handler=request_handler,
 ).build()
+
+# Make the /tmp/a2ui_media directory serve static media directly!
+os.makedirs("/tmp/a2ui_media", exist_ok=True)
+app.mount("/media", StaticFiles(directory="/tmp/a2ui_media"), name="media")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8080)

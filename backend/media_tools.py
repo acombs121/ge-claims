@@ -61,12 +61,23 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
         for candidate in response.candidates:
             if hasattr(candidate, 'content') and candidate.content and candidate.content.parts:
                 for part in candidate.content.parts:
+                    import uuid
+                    import os
+                    media_id = str(uuid.uuid4())
+                    agent_root = os.environ.get("AGENT_URL", "")
+
                     if hasattr(part, 'inline_data') and part.inline_data:
-                        b64 = base64.b64encode(part.inline_data.data).decode('utf-8')
-                        return f"data:{part.inline_data.mime_type};base64,{b64}"
+                        ext = part.inline_data.mime_type.split('/')[-1] if '/' in part.inline_data.mime_type else 'png'
+                        filepath = f"/tmp/a2ui_media/{media_id}.{ext}"
+                        with open(filepath, "wb") as f:
+                            f.write(part.inline_data.data)
+                        return f"{agent_root}/media/{media_id}.{ext}"
+
                     elif hasattr(part, 'image') and part.image:
-                        b64 = base64.b64encode(part.image.image_bytes).decode('utf-8')
-                        return f"data:image/jpeg;base64,{b64}"
+                        filepath = f"/tmp/a2ui_media/{media_id}.jpeg"
+                        with open(filepath, "wb") as f:
+                            f.write(part.image.image_bytes)
+                        return f"{agent_root}/media/{media_id}.jpeg"
 
     except Exception as e:
         import traceback
