@@ -181,7 +181,8 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
       text_part = final_response_content
 
       if "---a2ui_JSON---" not in final_response_content:
-        error_message = "Delimiter '---a2ui_JSON---' not found."
+        is_valid = True
+        json_string_cleaned = None
       else:
         try:
           import re
@@ -190,18 +191,15 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
           logger.info(json_string)
           logger.info("=========================")
           
-          # Robust Regex Extraction: Captures {...} or [...] completely ignoring markdown fences or whitespace hallucination
           match = re.search(r'(?:```(?:json)?\s*)?([\[\{][\s\S]*[\]\}])', json_string.strip())
           if match:
               json_string_cleaned = match.group(1).strip()
           else:
-              # Fallback if the strict regex somehow fails
               json_string_cleaned = json_string.strip().lstrip("```json").rstrip("```").strip()
 
           if not json_string_cleaned: json_string_cleaned = "[]"
           parsed_json = json.loads(json_string_cleaned)
           
-          # Validation Bypass for CustomView interpolation
           is_custom_view = False
           if isinstance(parsed_json, dict) and "CustomView" in parsed_json:
              is_custom_view = True
@@ -223,60 +221,61 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
         if text_part.strip():
           parts.append(types.Part(root=types.TextPart(text=text_part.strip())))
 
-        json_data = json.loads(json_string_cleaned)
-        processed_data = json_data
-        
-        # Interception Logic
-        target_view = None
-        if isinstance(json_data, dict) and "CustomView" in json_data:
-            target_view = json_data["CustomView"]
-        elif isinstance(json_data, list):
-            for item in json_data:
-                if isinstance(item, dict) and "CustomView" in item:
-                    target_view = item["CustomView"]
-                    break
-                elif isinstance(item, dict) and "surfaceUpdate" in item:
-                    # Check for Native DataGrid component and intercept it to CustomView table 
-                    for component in item["surfaceUpdate"].get("components", []):
-                        if "DataGrid" in component.get("component", {}):
-                            datagrid_data = component["component"]["DataGrid"]
-                            target_view = {
-                                "template": "table",
-                                "data": {
-                                    "columns": datagrid_data.get("columns", []),
-                                    "rows": datagrid_data.get("rows", [])
-                                }
-                            }
-                            break
-                    if target_view:
-                        break
-
-        if target_view:
-            logger.info(f"[DEBUG] CustomView intercepted triggering template {target_view.get('template')}")
+        if json_string_cleaned:
+            json_data = json.loads(json_string_cleaned)
+            processed_data = json_data
             
-            # Merge outer theme block into inner data block for injection into templates
-            view_data = target_view.get("data", {})
-            if "theme" in target_view:
-                view_data["theme"] = target_view["theme"]
+            target_view = None
+            if isinstance(json_data, dict) and "CustomView" in json_data:
+                target_view = json_data["CustomView"]
+            elif isinstance(json_data, list):
+                for item in json_data:
+                    if isinstance(item, dict) and "CustomView" in item:
+                        target_view = item["CustomView"]
+                        break
+                    elif isinstance(item, dict) and "surfaceUpdate" in item:
+                        for component in item["surfaceUpdate"].get("components", []):
+                            if "DataGrid" in component.get("component", {}):
+                                datagrid_data = component["component"]["DataGrid"]
+                                target_view = {
+                                    "template": "table",
+                                    "data": {
+                                        "columns": datagrid_data.get("columns", []),
+                                        "rows": datagrid_data.get("rows", [])
+                                    }
+                                }
+                                break
+                        if target_view:
+                            break
+
+            if target_view:
+                logger.info(f"[DEBUG] CustomView intercepted triggering template {target_view.get('template')}")
                 
-            processed_data = self._build_webframe(
-                view_data, 
-                target_view.get("template", "dashboard")
-            )
+                view_data = target_view.get("data", {})
+                if "theme" in target_view:
+                    view_data["theme"] = target_view["theme"]
+                    
+                processed_data = self._build_webframe(
+                    view_data, 
+                    target_view.get("template", "dashboard")
+                )
 
-        if isinstance(processed_data, list):
-          # Generate a fresh surface ID to prevent UI collisions across multiple turns
-          new_surface_id = "s-" + str(uuid.uuid4())[:8]
-          for message in processed_data:
-            if "beginRendering" in message and "surfaceId" in message["beginRendering"]:
-              message["beginRendering"]["surfaceId"] = new_surface_id
-            if "surfaceUpdate" in message and "surfaceId" in message["surfaceUpdate"]:
-              message["surfaceUpdate"]["surfaceId"] = new_surface_id
+            logger.info("=== PROCESSED JSON FOR FRONTEND ===")
+            logger.info(json.dumps(processed_data, indent=2))
+            logger.info("===================================")
+            
+            if isinstance(processed_data, list):
+              new_surface_id = "s-" + str(uuid.uuid4())[:8]
+              for message in processed_data:
+                if "beginRendering" in message and "surfaceId" in message["beginRendering"]:
+                  message["beginRendering"]["surfaceId"] = new_surface_id
+                if "surfaceUpdate" in message and "surfaceId" in message["surfaceUpdate"]:
+                  message["surfaceUpdate"]["surfaceId"] = new_surface_id
 
-          for message in processed_data:
-            parts.append(types.Part(root=types.DataPart(data=message, metadata={"mimeType": "application/json+a2ui"})))
-        else:
-          parts.append(types.Part(root=types.DataPart(data=processed_data, metadata={"mimeType": "application/json+a2ui"})))
+              for message in processed_data:
+                parts.append(types.Part(root=types.DataPart(data=message, metadata={"mimeType": "application/json+a2ui"})))
+            else:
+              parts.append(types.Part(root=types.DataPart(data=processed_data, metadata={"mimeType": "application/json+a2ui"})))
 
         await updater.add_artifact(parts, name="response")
         await updater.complete()
