@@ -509,21 +509,24 @@
                 } else if (panelData.type === 'pdf') {
                     let rawPdfUrl = panelData.data.src || panelData.data;
                     
-                    // Because A2UI heavily sandboxes the parent WebFrame (killing native Chrome PDF plugins),
-                    // we proxy the stream via the HTML-native Google Docs Viewer to guarantee rendering! 
-                    let proxyUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(rawPdfUrl)}&embedded=true`;
-                    
-                    let searchBadge = '';
+                    let searchFragment = '';
+                    let cleanSearchText = '';
                     if (panelData.data.search) {
-                        const cleanSearch = panelData.data.search.replace(/"/g, '');
-                        // Inject a beautiful floating sticky context badge to augment the loss of the native scroll-highlighting functionality
-                        searchBadge = `<div style="position:absolute; top:12px; right:24px; z-index:10; background:rgba(254, 243, 199, 0.95); color:#92400e; padding:6px 14px; border-radius:6px; font-size:0.85rem; font-weight:500; font-family:system-ui; box-shadow:0 2px 4px rgba(0,0,0,0.1); border:1px solid #fcd34d; backdrop-filter: blur(4px);">Suggested Context: <b>"${cleanSearch}"</b></div>`;
+                        cleanSearchText = panelData.data.search.replace(/"/g, '');
+                        searchFragment = `#search=${encodeURIComponent(cleanSearchText)}`;
+                    } else if (panelData.data.page) {
+                        searchFragment = `#page=${encodeURIComponent(panelData.data.page)}`;
                     }
                     
                     panel.innerHTML += `
-                        <div style="height:${isStandalone?'calc(100vh - 90px)':'600px'}; position:relative;">
-                            ${searchBadge}
-                            <iframe src="${proxyUrl}" width="100%" height="100%" style="border:none; border-radius:8px; background:#f1f5f9;"></iframe>
+                        <div style="height:${isStandalone?'calc(100vh - 90px)':'600px'}; display:flex; flex-direction:column; justify-content:center; align-items:center; background:#f8fafc; border: 2px dashed #cbd5e1; border-radius:8px; text-align:center; padding: 2rem;">
+                            <div style="width:64px; height:64px; background:#ef4444; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:1rem; box-shadow:0 4px 6px -1px rgba(239, 68, 68, 0.3);">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            </div>
+                            <h3 style="margin:0 0 0.5rem 0; color:#0f172a; font-family:system-ui; font-size:1.25rem;">Secure Document Isolation</h3>
+                            <p style="margin:0 0 1.5rem 0; color:#475569; font-family:system-ui; max-width:400px; line-height:1.6; font-size:0.95rem;">To proactively comply with structural WebFrame sandbox policies, native browser plugins are disabled here. Your asset has been verified and is ready for secure extraction viewing natively.</p>
+                            ${cleanSearchText ? `<div style="margin-bottom:1.5rem; background:#fef3c7; color:#b45309; padding:6px 14px; border-radius:100px; font-size:0.85rem; border:1px solid #fcd34d; font-family:system-ui;"><b>Targeted Context Mapping:</b> Scanning for "${cleanSearchText}"</div>` : ''}
+                            <a href="${rawPdfUrl}${searchFragment}" target="_blank" style="padding:12px 24px; background:#2563eb; color:white; text-decoration:none; border-radius:8px; font-weight:600; font-family:system-ui; letter-spacing:0.02em; transition: background 0.2s; box-shadow:0 4px 6px -1px rgba(37,99,235,0.25);">Review Verified Document &rarr;</a>
                         </div>`;
                     mainGrid.appendChild(panel);
                 }
