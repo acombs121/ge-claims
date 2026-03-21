@@ -134,6 +134,20 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
       task = utils.new_task(context.message)
       await event_queue.enqueue_event(task)
 
+    try:
+        if context.message and hasattr(context.message, 'parts'):
+            logger.info(f"A2UI-DEBUG-PARTS | Processing {len(context.message.parts)} parts in user message")
+            for i, part in enumerate(context.message.parts):
+                logger.info(f"A2UI-DEBUG-PARTS | Part {i}: {dir(part.root)}")
+                if hasattr(part.root, 'dataPart'):
+                   dp = part.root.dataPart
+                   logger.info(f"A2UI-DEBUG-PARTS | DataPart {i} MIME: {getattr(dp, 'metadata', {}).get('mimeType')} | Size: {len(getattr(dp, 'data', b''))}")
+                elif hasattr(part.root, 'inlineData'):
+                   ild = part.root.inlineData
+                   logger.info(f"A2UI-DEBUG-PARTS | InlineData {i} MIME: {getattr(ild, 'mimeType', '')}")
+    except Exception as e:
+        logger.error(f"A2UI-DEBUG-PARTS | Error mapping parts: {e}")
+
     updater = tasks.TaskUpdater(event_queue, task.id, task.context_id)
     session_id = task.context_id
 
