@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Table</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --hover-bg: #f8fafc;
+            --header-bg: #f1f5f9;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --hover-bg: #0f172a;
+            --header-bg: #0f172a;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            height: 100vh;
+            overflow: auto;
+        }
+
+        .table-container {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            background-color: var(--bg-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.875rem;
+        }
+
+        th {
+            background-color: var(--header-bg);
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: var(--hover-bg);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background-color: rgba(148, 163, 184, 0.1);
+            color: var(--text-secondary);
+        }
+
+        .badge-success { background-color: rgba(16, 185, 129, 0.1); color: #10b981; }
+        .badge-warning { background-color: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+        .badge-error { background-color: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+    </style>
+</head>
+<body>
+
+    <div class="table-container">
+        <table id="data-table">
+            <thead id="table-head">
+                <!-- Headers injected here -->
+            </thead>
+            <tbody id="table-body">
+                <!-- Rows injected here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const FALLBACK_DATA = {
+            "columns": [
+                {"field": "id", "headerName": "ID"},
+                {"field": "region", "headerName": "Region"},
+                {"field": "sales", "headerName": "Sales ($)"},
+                {"field": "status", "headerName": "Status"}
+            ],
+            "rows": [
+                {"id": 1, "region": "North America", "sales": 45000, "status": "Above Target"},
+                {"id": 2, "region": "Europe", "sales": 32000, "status": "On Target"},
+                {"id": 3, "region": "Asia Pacific", "sales": 28500, "status": "Below Target"},
+                {"id": 4, "region": "South America", "sales": 19000, "status": "Below Target"}
+            ]
+        };
+
+        function renderTable() {
+            const data = window.INJECTED_DATA || FALLBACK_DATA;
+            if (data.theme) {
+                document.documentElement.setAttribute('data-theme', data.theme);
+            }
+
+            const thead = document.getElementById('table-head');
+            const tbody = document.getElementById('table-body');
+            
+            if (!data.columns || !data.rows) return;
+
+            // Render Headers
+            const headerRow = document.createElement('tr');
+            data.columns.forEach(col => {
+                const th = document.createElement('th');
+                th.textContent = col.headerName || col.field;
+                if (col.width) th.style.width = col.width + 'px';
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+
+            // Render Rows
+            data.rows.forEach(row => {
+                const tr = document.createElement('tr');
+                data.columns.forEach(col => {
+                    const td = document.createElement('td');
+                    let val = row[col.field];
+                    
+                    if (val === undefined || val === null) {
+                        td.textContent = "-";
+                    } else if (col.field.toLowerCase() === 'status' || typeof val === 'string' && (val.includes('Target') || val === 'Active')) {
+                        const span = document.createElement('span');
+                        span.className = 'status-badge';
+                        span.textContent = val;
+                        const lowerVal = String(val).toLowerCase();
+                        if (lowerVal.includes('above') || lowerVal.includes('success') || lowerVal.includes('on') || lowerVal.includes('active')) {
+                            span.classList.add('badge-success');
+                        } else if (lowerVal.includes('below') || lowerVal.includes('error') || lowerVal.includes('fail')) {
+                            span.classList.add('badge-error');
+                        } else {
+                            span.classList.add('badge-warning');
+                        }
+                        td.appendChild(span);
+                    } else if (typeof val === 'number' && col.field.toLowerCase().includes('sales')) {
+                         td.textContent = "$" + val.toLocaleString();
+                    } else {
+                        td.textContent = val;
+                    }
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', renderTable);
+    </script>
+</body>
+</html>

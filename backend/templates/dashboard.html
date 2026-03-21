@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --accent-primary: #2563eb;
+            --accent-secondary: #4f46e5;
+            --border-color: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-primary: #38bdf8;
+            --accent-secondary: #818cf8;
+            --border-color: #334155;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 16px;
+            box-sizing: border-box;
+            font-size: 14px;
+            overflow-x: hidden;
+        }
+        .dashboard-header {
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+        .dashboard-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(to right, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .dashboard-header p {
+            color: var(--text-secondary);
+            margin: 4px 0 0 0;
+        }
+        .kpi-container {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .kpi-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            flex: 1;
+            min-width: 120px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent-primary);
+        }
+        .kpi-card.warning::before { background: var(--warning); }
+        .kpi-card.success::before { background: var(--success); }
+        .kpi-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+        .kpi-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 4px 0;
+        }
+        .kpi-sub {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        @media (max-width: 600px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+        .panel {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .main-grid > .panel:last-child:nth-child(odd) {
+            grid-column: 1 / -1;
+        }
+        .panel-header {
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+        th, td {
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+        tr:last-child td { border-bottom: none; }
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            background-color: rgba(148, 163, 184, 0.1);
+            color: var(--text-secondary);
+        }
+        .badge.high { background-color: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .badge.medium { background-color: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .form-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; font-family: inherit; font-size: 0.95rem; background: var(--bg-color); color: var(--text-primary); transition: border-color 0.2s; }
+        .form-input:focus { outline: none; border-color: var(--accent-primary); }
+        .btn-submit { background: var(--accent-primary); color: white; border: none; padding: 10px 24px; border-radius: 20px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .btn-submit:hover { opacity: 0.9; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <h1 id="db-title">Loading...</h1>
+        <p id="db-subtitle">-</p>
+    </div>
+
+    <div class="kpi-container" id="kpi-container">
+        <!-- KPIs injected here -->
+    </div>
+
+    <div class="main-grid" id="main-grid">
+        <!-- Panels injected here dynamically -->
+    </div>
+
+    <!-- DATA INJECTION POINT -->
+    <script>
+        function init() {
+            const data = window.INJECTED_DATA || {};
+            if (data.theme) { document.documentElement.setAttribute('data-theme', data.theme); }
+            
+            document.getElementById('db-title').innerText = data.title || "Dashboard";
+            document.getElementById('db-subtitle').innerText = data.subtitle || "Analysis Overview";
+
+            const kpiCont = document.getElementById('kpi-container');
+            kpiCont.innerHTML = '';
+            (data.kpis || []).forEach(kpi => {
+                const card = document.createElement('div');
+                card.className = 'kpi-card';
+                if (kpi.status) card.classList.add(kpi.status);
+                card.innerHTML = `
+                    <div class="kpi-title">${kpi.title}</div>
+                    <div class="kpi-value">${kpi.value}</div>
+                    <div class="kpi-sub">${kpi.sub || ''}</div>
+                `;
+                kpiCont.appendChild(card);
+            });
+
+            // Normalize legacy output to the new grid array format
+            let gridLayout = data.grid || [];
+            if (gridLayout.length === 0) {
+                if (data.chart) gridLayout.push({type: 'chart', title: data.chart_title || 'Visual Analysis', data: data.chart});
+                if (data.table) gridLayout.push({type: 'table', title: data.table_title || 'Tabular Data', data: data.table});
+            }
+
+            const mainGrid = document.getElementById('main-grid');
+            mainGrid.innerHTML = '';
+            let chartIndex = 0;
+
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const gridColor = isDark ? '#334155' : '#e2e8f0';
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+
+            gridLayout.forEach(panelData => {
+                const panel = document.createElement('div');
+                panel.className = 'panel';
+                
+                const header = document.createElement('div');
+                header.className = 'panel-header';
+                header.innerText = panelData.title || 'Data Panel';
+                panel.appendChild(header);
+
+                if (panelData.type === 'chart') {
+                    const canvasId = 'chartCanvas_' + (chartIndex++);
+                    const chartContainer = document.createElement('div');
+                    chartContainer.style = "position: relative; height: 220px;";
+                    chartContainer.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+                    panel.appendChild(chartContainer);
+                    mainGrid.appendChild(panel);
+
+                    const ctx = document.getElementById(canvasId).getContext('2d');
+                    new Chart(ctx, {
+                        type: panelData.data.type || 'bar',
+                        data: {
+                            labels: panelData.data.labels,
+                            datasets: [{
+                                label: panelData.data.label || 'Metric',
+                                data: panelData.data.data,
+                                backgroundColor: 'rgba(37, 99, 235, 0.8)',
+                                borderColor: 'rgba(37, 99, 235, 1)',
+                                borderWidth: 1,
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 } } },
+                                x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } }
+                            }
+                        }
+                    });
+
+                } else if (panelData.type === 'table') {
+                    const tableContainer = document.createElement('div');
+                    tableContainer.style = "overflow-x: auto;";
+                    
+                    const ths = (panelData.data.headers || []).map(h => `<th>${h}</th>`).join('');
+                    const trs = (panelData.data.rows || []).map(row => {
+                        const tds = row.map((cell, i) => {
+                            const h = (panelData.data.headers[i] || '').toLowerCase();
+                            if (h.includes('score') || h.includes('rate') || h.includes('%')) {
+                                const num = parseFloat(cell);
+                                const classVal = num > 80 ? 'high' : (num > 60 ? 'medium' : '');
+                                return `<td><span class="badge ${classVal}">${cell}%</span></td>`;
+                            }
+                            return `<td>${cell}</td>`;
+                        }).join('');
+                        return `<tr>${tds}</tr>`;
+                    }).join('');
+
+                    tableContainer.innerHTML = `<table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+                    panel.appendChild(tableContainer);
+                    mainGrid.appendChild(panel);
+
+                } else if (panelData.type === 'form') {
+                    const formContainer = document.createElement('div');
+                    let formHtml = `<form onsubmit="event.preventDefault(); const formData = new FormData(this); const payload = Object.fromEntries(formData); console.log('Form Submitted: ', payload); if(window.parent) { window.parent.postMessage({type: 'a2a.action', actionId: 'custom_form_submit', actionData: payload}, '*'); } alert('Form Action Dispatched natively: ' + JSON.stringify(payload)); ">`;
+                    
+                    (panelData.data.fields || []).forEach(f => {
+                        formHtml += `<div class="form-group">`;
+                        if (f.label) formHtml += `<label class="form-label">${f.label}</label>`;
+                        if (f.type === 'textarea') {
+                            formHtml += `<textarea class="form-input" name="${f.name||''}" rows="3" ${f.required?'required':''}></textarea>`;
+                        } else if (f.type === 'select') {
+                            formHtml += `<select class="form-input" name="${f.name||''}">`;
+                            (f.options || []).forEach(opt => { formHtml += `<option value="${opt}">${opt}</option>`; });
+                            formHtml += `</select>`;
+                        } else {
+                            formHtml += `<input class="form-input" type="${f.type||'text'}" name="${f.name||''}" ${f.required?'required':''}>`;
+                        }
+                        formHtml += `</div>`;
+                    });
+                    
+                    formHtml += `<div style="text-align: right;"><button type="submit" class="btn-submit">${panelData.data.submitLabel || 'Submit'}</button></div></form>`;
+                    formContainer.innerHTML = formHtml;
+                    panel.appendChild(formContainer);
+                    mainGrid.appendChild(panel);
+
+                } else if (panelData.type === 'd3-network') {
+                    const containerId = 'd3Canvas_' + (chartIndex++);
+                    const d3Container = document.createElement('div');
+                    d3Container.id = containerId;
+                    d3Container.style = "position: relative; height: 350px; background: rgba(0,0,0,0.02); border-radius: 8px; overflow: hidden;";
+                    panel.appendChild(d3Container);
+                    mainGrid.appendChild(panel);
+
+                    setTimeout(() => {
+                        const width = document.getElementById(containerId).clientWidth;
+                        const height = 350;
+                        const svg = d3.select("#" + containerId).append("svg")
+                            .attr("width", width).attr("height", height);
+
+                        const nodes = panelData.data.nodes || [];
+                        const links = panelData.data.edges || [];
+
+                        const simulation = d3.forceSimulation(nodes)
+                            .force("link", d3.forceLink(links).id(d => d.id).distance(100))
+                            .force("charge", d3.forceManyBody().strength(-300))
+                            .force("center", d3.forceCenter(width / 2, height / 2));
+
+                        const link = svg.append("g")
+                            .selectAll("line").data(links).join("line")
+                            .attr("stroke", gridColor).attr("stroke-width", 2);
+
+                        const node = svg.append("g")
+                            .selectAll("circle").data(nodes).join("circle")
+                            .attr("r", d => d.radius || 12)
+                            .attr("fill", d => d.color || 'var(--accent-primary)')
+                            .call(d3.drag()
+                                .on("start", (event, d) => { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+                                .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y; })
+                                .on("end", (event, d) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
+
+                        node.append("title").text(d => d.label);
+                        const labels = svg.append("g").selectAll("text").data(nodes).join("text")
+                            .attr("dy", -18).attr("text-anchor", "middle").text(d => d.label)
+                            .style("font-size", "10px").style("font-weight", "600").style("fill", textColor);
+
+                        simulation.on("tick", () => {
+                            link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+                                .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+                            node.attr("cx", d => d.x).attr("cy", d => d.y);
+                            labels.attr("x", d => d.x).attr("y", d => d.y);
+                        });
+                    }, 50);
+
+                } else if (panelData.type === 'map-heatmap') {
+                    const containerId = 'mapCanvas_' + (chartIndex++);
+                    const mapContainer = document.createElement('div');
+                    mapContainer.id = containerId;
+                    mapContainer.style = "position: relative; height: 350px; background: rgba(0,0,0,0.02); border-radius: 8px; overflow: hidden;";
+                    panel.appendChild(mapContainer);
+                    mainGrid.appendChild(panel);
+
+                    setTimeout(() => {
+                        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                        const map = L.map(containerId).setView([panelData.data.centerLat || 0, panelData.data.centerLng || 0], panelData.data.zoom || 2);
+                        
+                        const tileUrl = isDark 
+                            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+                            
+                        L.tileLayer(tileUrl, {
+                            attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+                        }).addTo(map);
+
+                        if (panelData.data.points) {
+                            L.heatLayer(panelData.data.points, {
+                                radius: panelData.data.radius || 25, 
+                                blur: panelData.data.blur || 15, 
+                                maxZoom: panelData.data.maxZoom || 17
+                            }).addTo(map);
+                        }
+                    }, 50);
+                }
+            });
+        }
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

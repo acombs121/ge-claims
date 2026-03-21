@@ -1,0 +1,19 @@
+{
+  "name": "agent_display_name",
+  "description": "Executive Summary representing the customer value prop.",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true
+  },
+  "skills": [
+    {
+      "id": "analysis",
+      "name": "Analytical capability title",
+      "description": "What this specific skill solves (e.g. Supply Chain bottlenecks)",
+      "tags": ["industry", "use_case"],
+      "examples": [
+        "Sample query that triggers a dashboard payload"
+      ]
+    }
+  ]
+}
