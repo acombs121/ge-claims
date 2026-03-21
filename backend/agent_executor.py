@@ -138,11 +138,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
         if context.message and hasattr(context.message, 'parts'):
             logger.info(f"A2UI-DEBUG-PARTS | Processing {len(context.message.parts)} parts in user message")
             for i, part in enumerate(context.message.parts):
-                if hasattr(part.root, 'file'):
-                   logger.info(f"A2UI-DEBUG-PARTS | BOUNDARY CAPTURED File Part {i}: {part.root.dict()}")
-                elif hasattr(part.root, 'inlineData'):
-                   ild = part.root.inlineData
-                   logger.info(f"A2UI-DEBUG-PARTS | InlineData {i} MIME: {getattr(ild, 'mimeType', '')}")
+                logger.info(f"A2UI-DEBUG-PARTS | Raw Part {i}: {part.dict() if hasattr(part, 'dict') else part}")
     except Exception as e:
         logger.error(f"A2UI-DEBUG-PARTS | Error mapping parts: {e}")
 
