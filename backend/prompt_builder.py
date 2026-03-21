@@ -175,13 +175,6 @@ CUSTOMVIEW_DASHBOARD_EXAMPLE = """
             "src": "https://url.mp3",
             "mime_type": "audio/mpeg"
           }
-        },
-        {
-          "type": "pdf",
-          "title": "Document Verification",
-          "data": {
-            "src": "https://url.pdf"
-          }
         }
       ]
     }

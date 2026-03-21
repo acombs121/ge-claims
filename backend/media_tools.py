@@ -62,7 +62,6 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
             if hasattr(candidate, 'content') and candidate.content and candidate.content.parts:
                 for part in candidate.content.parts:
                     import uuid
-                    import os
                     os.makedirs('/tmp/a2ui_media', exist_ok=True)
                     media_id = str(uuid.uuid4())
                     agent_root = os.environ.get("AGENT_URL", "")

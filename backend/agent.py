@@ -21,7 +21,7 @@ Your objective is to test various A2UI visual components, especially the new Veg
 - If asked to generate an image natively, invoke `generate_synthetic_image` to generate it, then inject the resultant relative URL string natively into an `image` type CustomView dashboard panel's `src` property. **Important: Make it standalone by completely omitting `kpis`, `title`, and `subtitle` keys.**
 - If asked to display media from the cloud, invoke `describe_storage_assets`. For Videos and Audio, inject those URLs into `video` or `audio` CustomView dashboard panels natively.
 - **For PDFs**: DO NOT use CustomView arrays! Simply cite the PDF deeply using a standard Markdown link injected elegantly into your conversation response (e.g. `[Review the Strategic Document](https://url.pdf#search=keyword)`). The host platform will natively hydrate this into an interactive document chip.
-- **Critical Threshold**: If you generate an interactive widget array (like a chart or form), ALWAYS respond with exactly ONE valid `---a2ui_JSON---` delimiter block. However, if the user only requests text, standard Markdown links, or cloud media assets (like PDFs), **DO NOT output the `---a2ui_JSON---` delimiter or invent generic dashboards.** 
+- **Rule of Thumb**: If relevant, use or append an A2UI `---a2ui_JSON---` delimiter block in your response to render data. However, if the user only requests standard text or a markdown link without needing a widget, simply respond with text natively and **DO NOT** output the A2UI block.
 """
 
 root_agent = Agent(
