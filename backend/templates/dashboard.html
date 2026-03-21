@@ -158,8 +158,9 @@
         .form-label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
         .form-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; font-family: inherit; font-size: 0.95rem; background: var(--bg-color); color: var(--text-primary); transition: border-color 0.2s; }
         .form-input:focus { outline: none; border-color: var(--accent-primary); }
-        .btn-submit { background: var(--accent-primary); color: white; border: none; padding: 10px 24px; border-radius: 20px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .btn-submit { background: var(--accent-primary); color: white; border: none; padding: 10px 24px; border-radius: 20px; font-weight: 600; cursor: pointer; transition: opacity 0.2s, background-color 0.2s; }
         .btn-submit:hover { opacity: 0.9; }
+        .d3-tooltip { position: absolute; text-align: center; padding: 6px 10px; font-size: 11px; font-weight: 600; background: rgba(15, 23, 42, 0.9); color: #fff; border-radius: 6px; pointer-events: none; opacity: 0; z-index: 50; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
     </style>
 </head>
 <body>
@@ -280,7 +281,7 @@
 
                 } else if (panelData.type === 'form') {
                     const formContainer = document.createElement('div');
-                    let formHtml = `<form onsubmit="event.preventDefault(); const formData = new FormData(this); const payload = Object.fromEntries(formData); console.log('Form Submitted: ', payload); if(window.parent) { window.parent.postMessage({type: 'a2a.action', actionId: 'custom_form_submit', actionData: payload}, '*'); } alert('Form Action Dispatched natively: ' + JSON.stringify(payload)); ">`;
+                    let formHtml = `<form onsubmit="event.preventDefault(); const formData = new FormData(this); const payload = Object.fromEntries(formData); console.log('Form Submitted: ', payload); if(window.parent) { window.parent.postMessage({type: 'a2a.action', actionId: 'custom_form_submit', actionData: payload}, '*'); } const btn = this.querySelector('.btn-submit'); btn.innerText = 'Sent!'; btn.style.background = 'var(--success)'; this.querySelectorAll('.form-input').forEach(i => i.style.opacity = '0.5'); ">`;
                     
                     (panelData.data.fields || []).forEach(f => {
                         formHtml += `<div class="form-group">`;
@@ -328,16 +329,29 @@
                             .selectAll("line").data(links).join("line")
                             .attr("stroke", gridColor).attr("stroke-width", 2);
 
+                        // Setup tooltip
+                        const tooltip = d3.select(d3Container).append("div")
+                            .attr("class", "d3-tooltip");
+
                         const node = svg.append("g")
                             .selectAll("circle").data(nodes).join("circle")
                             .attr("r", d => d.radius || 12)
                             .attr("fill", d => d.color || 'var(--accent-primary)')
+                            .on("mouseover", function(event, d) {
+                                tooltip.transition().duration(200).style("opacity", 1);
+                                tooltip.html(d.label + (d.value ? `<br/><span style="color:#94a3b8; font-weight:400;">Val: ${d.value}</span>` : ''))
+                                    .style("left", (event.offsetX + 15) + "px")
+                                    .style("top", (event.offsetY - 20) + "px");
+                            })
+                            .on("mouseout", function(d) {
+                                tooltip.transition().duration(200).style("opacity", 0);
+                            })
                             .call(d3.drag()
                                 .on("start", (event, d) => { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
                                 .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y; })
                                 .on("end", (event, d) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
 
-                        node.append("title").text(d => d.label);
+                        // node.append("title").text(d => d.label); // Disabling default title since we have rich tooltip
                         const labels = svg.append("g").selectAll("text").data(nodes).join("text")
                             .attr("dy", -18).attr("text-anchor", "middle").text(d => d.label)
                             .style("font-size", "10px").style("font-weight", "600").style("fill", textColor);
@@ -378,6 +392,22 @@
                             }).addTo(map);
                         }
                     }, 50);
+
+                } else if (panelData.type === 'image') {
+                    panel.innerHTML += `<div style="text-align:center;"><img src="${panelData.data.src}" alt="${panelData.data.alt || 'GenAI Image'}" style="max-width: 100%; border-radius: 8px;"></div>`;
+                    mainGrid.appendChild(panel);
+
+                } else if (panelData.type === 'video') {
+                    panel.innerHTML += `<div style="text-align:center;"><video controls style="max-width: 100%; border-radius: 8px;"><source src="${panelData.data.src}" type="${panelData.data.mime_type || 'video/mp4'}">Your browser does not support the video tag.</video></div>`;
+                    mainGrid.appendChild(panel);
+
+                } else if (panelData.type === 'audio') {
+                    panel.innerHTML += `<div style="text-align:center;"><audio controls style="width: 100%; margin-top: 10px;"><source src="${panelData.data.src}" type="${panelData.data.mime_type || 'audio/mpeg'}">Your browser does not support the audio element.</audio></div>`;
+                    mainGrid.appendChild(panel);
+
+                } else if (panelData.type === 'pdf') {
+                    panel.innerHTML += `<div style="height:450px;"><iframe src="${panelData.data.src}" width="100%" height="100%" style="border:none; border-radius:8px;"></iframe></div>`;
+                    mainGrid.appendChild(panel);
                 }
             });
         }

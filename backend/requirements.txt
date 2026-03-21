@@ -8,3 +8,6 @@ uvicorn
 db-dtypes
 git+https://github.com/google/adk-python.git
 a2a-sdk[http-server]
+
+google-genai
+google-cloud-storage

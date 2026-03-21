@@ -126,6 +126,37 @@ CUSTOMVIEW_DASHBOARD_EXAMPLE = """
               [40.712, -74.006, 0.8]
             ]
           }
+        },
+        {
+          "type": "image",
+          "title": "Generative Media Output",
+          "data": {
+            "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+            "alt": "Generated Base64 Image"
+          }
+        },
+        {
+          "type": "video",
+          "title": "Cloud Streaming Demo",
+          "data": {
+            "src": "https://storage.googleapis.com/...mp4",
+            "mime_type": "video/mp4"
+          }
+        },
+        {
+          "type": "audio",
+          "title": "Audio Asset Demo",
+          "data": {
+            "src": "https://url.mp3",
+            "mime_type": "audio/mpeg"
+          }
+        },
+        {
+          "type": "pdf",
+          "title": "Document Verification",
+          "data": {
+            "src": "https://url.pdf"
+          }
         }
       ]
     }

@@ -26,7 +26,9 @@ To bypass constraints where custom widgets (like Maps or rich interactive charts
 
 To run A2UI agents on Argolis:
 
-1.  **Cloud Run Service Account**:
+1.  **Vertex AI API**:
+    - Ensure the `aiplatform.googleapis.com` (Vertex AI API) is fully enabled in your Google Cloud Project: `gcloud services enable aiplatform.googleapis.com`. This is strictly required for the Gemini Image Generation models to function properly natively.
+2.  **Cloud Run Service Account**:
     Ensure the Service account deployed with has correct permissions to query Vertex AI:
     - `roles/aiplatform.user`
     - `roles/storage.objectViewer` (If pulling unstructured data assets)
@@ -126,23 +128,26 @@ Use this verified template:
 
 ---
 
-## 🧰 A2UI Component Inventory
+## 🌟 Summary of Engine Capabilities
 
-When configuring your Agent's `SYSTEM_INSTRUCTION`, it's critical to explicitly map specific intents to specific UI components. This Seed supports two primary rendering pathways:
+This agent seed is pre-configured with a powerful `CustomView` frontend engine mapping natively to backend tools, giving your LLM an advanced toolbelt for rendering rich interactions and multimodal data.
 
-1. **Native A2UI Arrays (For generic layout components)**
-   - **`DataGrid`**: Use for raw tabular data. Instruct the LLM to output a Native A2UI Array containing the DataGrid component.
-   - **`VegaChart`**: Use for isolated charts or basic trends. Instruct the LLM to output a Native A2UI Array containing a VegaChart, including responsive `width` and `height` container declarations.
+### 1. The Dynamic Hybrid UI Engine
+The core rendering environment revolves around `backend/templates/dashboard.html`. Your LLM can construct a flexible JSON `grid` spanning the following components:
+- **`d3-network`**: Instantiates a premium, interactive D3.js force-directed physics graph (with cursor tooltips) using `nodes` and `edges` logic.
+- **`map-heatmap`**: Spawns a Leaflet + CARTO dark/light basemap projecting dense geospatial hot-spots from lat/lng `points`.
+- **`form`**: Constructs a completely dynamic HTML `<form>`. The `submit` button natively bridges a postMessage payload *back* up to Agent-Stage/GE for true bi-directional functionality.
+- **`chart` / `table`**: Standard Chart.js panels and HTML tabular arrays.
 
-2. **WebFrame `CustomView` Overlays (The Dynamic Hybrid Engine)**
-   The core A2UI engine resides in `backend/templates/dashboard.html`. It mathematically iterates over a `grid` array populated by your LLM to render responsive panels. Available dynamic block `types` include:
-   - **`chart`**: Generates a standard Chart.js Bar/Pie/Line visualization natively.
-   - **`table`**: Constructs a styled HTML table fitted properly onto the CustomView card logic to prevent awkward A2UI stretching behavior.
-   - **`form`**: Generates a beautiful HTML `<form>` based on `fields`. The `submit` button natively bridges a postMessage back to Agent-Stage/GE for true bi-directional functionality.
-   - **`d3-network`**: Summons a premium, animated, interactive force-directed `d3.js` graph utilizing complex `nodes` and `edges` logic.
-   - **`map-heatmap`**: Spawns a dedicated CARTO basemap via Leaflet projecting density hot-spots from `points` arrays.
+*(For simple, isolated elements, the Agent is also instructed on basic Native A2UI Arrays for `DataGrid` and `VegaChart`).*
 
-   *(Other older templates like `map.html` and `inventory.html` serve as modular scaffolding if you need strictly disconnected routing endpoints).*
+### 2. Generative Media Pipelines
+The seed securely mounts the `google-genai` Python SDK. You can instruct the agent to generate completely new images via **Gemini 3.1 Flash Image Preview**. 
+- The backend parses the byte stream, base64 encodes it, and hands the LLM a clean `data:image/` string.
+- The LLM injects that string into an `image` grid block in the dashboard, rendering generative media *instantly*.
+
+### 3. Cloud Storage Asset Mounting
+The backend provides architectural tooling designed to authenticate with Google Cloud Storage (`storage.Client()`). The dashboard engine has native wrappers `video`, `audio`, and `pdf`. The agent can seamlessly query a bucket dataset and pass the resultant cloud URLs directy into the dashboard for users to playback or verify.
 
 ---
 
