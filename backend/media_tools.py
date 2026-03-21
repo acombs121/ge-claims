@@ -14,7 +14,7 @@ def describe_storage_assets(tool_context: ToolContext = None) -> dict:
         "sample_video_url": "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
         "sample_audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
         "sample_image_url": "https://storage.googleapis.com/cloud-samples-data/generative-ai/image/woman.jpg",
-        "sample_pdf_url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+        "sample_pdf_url": "https://storage.googleapis.com/cloud-samples-data/generative-ai/pdf/2403.05530.pdf"
     }
 
 async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None) -> str:
@@ -63,6 +63,7 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
                 for part in candidate.content.parts:
                     import uuid
                     import os
+                    os.makedirs('/tmp/a2ui_media', exist_ok=True)
                     media_id = str(uuid.uuid4())
                     agent_root = os.environ.get("AGENT_URL", "")
 

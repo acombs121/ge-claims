@@ -128,11 +128,36 @@ CUSTOMVIEW_DASHBOARD_EXAMPLE = """
           }
         },
         {
+          "type": "simulator",
+          "title": "Scenario Simulator",
+          "data": {
+            "controls": [
+                 {"label": "Ad Spend ($)", "min": 0, "max": 100000, "step": 1000, "value": 50000},
+                 {"label": "Conversion Rate (%)", "min": 1, "max": 15, "step": 0.5, "value": 3.0}
+            ],
+            "chartConfig": {
+                 "type": "bar",
+                 "data": {"labels": ["Revenue", "Profit"], "datasets": [{"label": "Projections", "data": [0, 0]}]}
+            },
+            "onUpdateBody": "const spend = params[0]; const conv = params[1] / 100; const sales = (spend/50)*conv; const revenue = sales*1000; const profit = revenue - spend; chart.data.datasets[0].data = [revenue, profit];"
+          }
+        },
+        {
+          "type": "3p-widget",
+          "title": "Salesforce Mock",
+          "data": {
+            "appName": "Salesforce CRM",
+            "appIcon": "https://www.salesforce.com/favicon.ico",
+            "themeColor": "#00a1e0",
+            "htmlContent": "<div style='padding:10px;'><h3>Lead Summary</h3><button style='padding:8px; background:#00a1e0; color:#fff; border:none; border-radius:4px;'>View App</button></div>"
+          }
+        },
+        {
           "type": "image",
           "title": "Generative Media Output",
           "data": {
-            "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
-            "alt": "Generated Base64 Image"
+            "src": "https://agent-url.run.app/media/d31d8.jpeg",
+            "alt": "Generated Image"
           }
         },
         {
