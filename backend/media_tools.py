@@ -35,11 +35,18 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
             try:
                 artifact_keys = await tool_context.list_artifacts()
                 for key in artifact_keys:
-                    if key.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
-                        image_bytes = await tool_context.load_artifact(key)
-                        if image_bytes:
-                            ext = key.lower().split('.')[-1]
-                            mime_type = f"image/{'jpeg' if ext == 'jpg' else ext}"
+                    image_bytes = await tool_context.load_artifact(key)
+                    if image_bytes:
+                        # Map MIME type via binary signature instead of structural string suffix
+                        mime_type = None
+                        if image_bytes.startswith(b'\xff\xd8'):
+                            mime_type = "image/jpeg"
+                        elif image_bytes.startswith(b'\x89PNG'):
+                            mime_type = "image/png"
+                        elif image_bytes.startswith(b'RIFF'):
+                            mime_type = "image/webp"
+
+                        if mime_type:
                             vision_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
                             contents_parts.append(vision_part)
             except Exception as e:
