@@ -136,17 +136,16 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
 
     try:
         if context.message and hasattr(context.message, 'parts'):
-            logger.info(f"A2UI-DEBUG-PARTS | Processing {len(context.message.parts)} parts in user message")
             for i, part in enumerate(context.message.parts):
                 if hasattr(part.root, 'file') and hasattr(part.root.file, 'data') and part.root.file.data:
-                    logger.info("A2UI-DEBUG-PARTS | CAPTURED NATIVE NANO-BINARY. Caching to /tmp/a2ui_latest_vision_bytes.bin...")
+                    logger.info("A2UI-MEDIA-INTERCEPT | Safely extracted native media blob across execution boundary.")
                     try:
                         with open("/tmp/a2ui_latest_vision_bytes.bin", "wb") as f:
                             f.write(part.root.file.data)
                     except Exception as e:
-                        logger.error(f"A2UI-DEBUG-PARTS | Error writing cache: {e}")
+                        logger.error(f"A2UI-MEDIA-INTERCEPT | Error caching media binary: {e}")
     except Exception as e:
-        logger.error(f"A2UI-DEBUG-PARTS | Error mapping parts: {e}")
+        logger.error(f"A2UI-MEDIA-INTERCEPT | Error mapping parts: {e}")
 
     updater = tasks.TaskUpdater(event_queue, task.id, task.context_id)
     session_id = task.context_id

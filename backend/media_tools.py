@@ -48,7 +48,7 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
                     contents_parts.append(vision_part)
                 os.remove(tmp_cache_path) # Clean state for next interaction
             except Exception as e:
-                print(f"A2UI-IMAGE-DEBUG | Cache fetch error: {e}")
+                pass # Fail silently and fallback to standard text prompt handling
         
         if tool_context:
             try:
