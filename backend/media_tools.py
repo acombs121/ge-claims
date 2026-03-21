@@ -23,12 +23,9 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
         return "Error: google-genai SDK is not installed or available."
     
     try:
-        project_id = os.environ.get("GOOGLE_CLOUD_PROJECT", "sandbox-426014")
         client = genai.Client(
             vertexai=True,
             api_key=os.environ.get("GOOGLE_CLOUD_API_KEY", None),
-            project=project_id,
-            location=os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
         )
 
         contents_parts = []

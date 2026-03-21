@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
     <style>
         :root {
@@ -183,22 +186,33 @@
             const data = window.INJECTED_DATA || {};
             if (data.theme) { document.documentElement.setAttribute('data-theme', data.theme); }
             
-            document.getElementById('db-title').innerText = data.title || "Dashboard";
-            document.getElementById('db-subtitle').innerText = data.subtitle || "Analysis Overview";
+            const headerEl = document.querySelector('.dashboard-header');
+            if (!data.title && !data.subtitle) {
+                headerEl.style.display = 'none';
+            } else {
+                document.getElementById('db-title').innerText = data.title || "";
+                document.getElementById('db-subtitle').innerText = data.subtitle || "";
+                if (!data.title) document.getElementById('db-title').style.display = 'none';
+                if (!data.subtitle) document.getElementById('db-subtitle').style.display = 'none';
+            }
 
             const kpiCont = document.getElementById('kpi-container');
-            kpiCont.innerHTML = '';
-            (data.kpis || []).forEach(kpi => {
-                const card = document.createElement('div');
-                card.className = 'kpi-card';
-                if (kpi.status) card.classList.add(kpi.status);
-                card.innerHTML = `
-                    <div class="kpi-title">${kpi.title}</div>
-                    <div class="kpi-value">${kpi.value}</div>
-                    <div class="kpi-sub">${kpi.sub || ''}</div>
-                `;
-                kpiCont.appendChild(card);
-            });
+            if (!data.kpis || data.kpis.length === 0) {
+                kpiCont.style.display = 'none';
+            } else {
+                kpiCont.innerHTML = '';
+                data.kpis.forEach(kpi => {
+                    const card = document.createElement('div');
+                    card.className = 'kpi-card';
+                    if (kpi.status) card.classList.add(kpi.status);
+                    card.innerHTML = `
+                        <div class="kpi-title">${kpi.title}</div>
+                        <div class="kpi-value">${kpi.value}</div>
+                        <div class="kpi-sub">${kpi.sub || ''}</div>
+                    `;
+                    kpiCont.appendChild(card);
+                });
+            }
 
             // Normalize legacy output to the new grid array format
             let gridLayout = data.grid || [];
@@ -215,19 +229,30 @@
             const gridColor = isDark ? '#334155' : '#e2e8f0';
             const textColor = isDark ? '#94a3b8' : '#64748b';
 
+            const isStandalone = !data.title && !data.subtitle && (!data.kpis || data.kpis.length === 0) && gridLayout.length === 1;
+            const dynamicPanelHeight = isStandalone ? 'calc(100vh - 40px)' : '350px';
+
             gridLayout.forEach(panelData => {
                 const panel = document.createElement('div');
                 panel.className = 'panel';
                 
-                const header = document.createElement('div');
-                header.className = 'panel-header';
-                header.innerText = panelData.title || 'Data Panel';
-                panel.appendChild(header);
+                if (panelData.title) {
+                    const header = document.createElement('div');
+                    header.className = 'panel-header';
+                    header.innerText = panelData.title;
+                    panel.appendChild(header);
+                } else {
+                    panel.style.padding = '0';
+                    panel.style.border = 'none';
+                    panel.style.background = 'transparent';
+                    panel.style.boxShadow = 'none';
+                    panel.style.height = isStandalone ? '100%' : 'auto';
+                }
 
                 if (panelData.type === 'chart') {
                     const canvasId = 'chartCanvas_' + (chartIndex++);
                     const chartContainer = document.createElement('div');
-                    chartContainer.style = "position: relative; height: 220px;";
+                    chartContainer.style = `position: relative; height: ${isStandalone ? 'calc(100vh - 40px)' : '250px'};`;
                     chartContainer.innerHTML = `<canvas id="${canvasId}"></canvas>`;
                     panel.appendChild(chartContainer);
                     mainGrid.appendChild(panel);
@@ -279,6 +304,21 @@
                     panel.appendChild(tableContainer);
                     mainGrid.appendChild(panel);
 
+                } else if (panelData.type === 'vega') {
+                    const vegaId = 'vegaCanvas_' + (chartIndex++);
+                    const vegaContainer = document.createElement('div');
+                    vegaContainer.id = vegaId;
+                    vegaContainer.style = `position: relative; height: ${dynamicPanelHeight}; width: 100%; overflow: hidden;`;
+                    panel.appendChild(vegaContainer);
+                    mainGrid.appendChild(panel);
+
+                    setTimeout(() => {
+                        vegaEmbed('#' + vegaId, panelData.data || panelData.config, {
+                            actions: false,
+                            theme: document.documentElement.getAttribute('data-theme')
+                        }).catch(console.error);
+                    }, 50);
+
                 } else if (panelData.type === 'form') {
                     const formContainer = document.createElement('div');
                     let formHtml = `<form onsubmit="event.preventDefault(); const formData = new FormData(this); const payload = Object.fromEntries(formData); console.log('Form Submitted: ', payload); if(window.parent) { window.parent.postMessage({type: 'a2a.action', actionId: 'custom_form_submit', actionData: payload}, '*'); } const btn = this.querySelector('.btn-submit'); btn.innerText = 'Sent!'; btn.style.background = 'var(--success)'; this.querySelectorAll('.form-input').forEach(i => i.style.opacity = '0.5'); ">`;
@@ -307,13 +347,13 @@
                     const containerId = 'd3Canvas_' + (chartIndex++);
                     const d3Container = document.createElement('div');
                     d3Container.id = containerId;
-                    d3Container.style = "position: relative; height: 350px; background: rgba(0,0,0,0.02); border-radius: 8px; overflow: hidden;";
+                    d3Container.style = `position: relative; height: ${dynamicPanelHeight}; background: rgba(0,0,0,0.02); border-radius: 8px; overflow: hidden;`;
                     panel.appendChild(d3Container);
                     mainGrid.appendChild(panel);
 
                     setTimeout(() => {
                         const width = document.getElementById(containerId).clientWidth;
-                        const height = 350;
+                        const height = document.getElementById(containerId).clientHeight || 350;
                         const svg = d3.select("#" + containerId).append("svg")
                             .attr("width", width).attr("height", height);
 
@@ -368,7 +408,7 @@
                     const containerId = 'mapCanvas_' + (chartIndex++);
                     const mapContainer = document.createElement('div');
                     mapContainer.id = containerId;
-                    mapContainer.style = "position: relative; height: 350px; background: rgba(0,0,0,0.02); border-radius: 8px; overflow: hidden;";
+                    mapContainer.style = `position: relative; height: ${dynamicPanelHeight}; background: rgba(0,0,0,0.02); border-radius: 8px; overflow: hidden;`;
                     panel.appendChild(mapContainer);
                     mainGrid.appendChild(panel);
 
@@ -394,19 +434,19 @@
                     }, 50);
 
                 } else if (panelData.type === 'image') {
-                    panel.innerHTML += `<div style="text-align:center;"><img src="${panelData.data.src}" alt="${panelData.data.alt || 'GenAI Image'}" style="max-width: 100%; border-radius: 8px;"></div>`;
+                    panel.innerHTML += `<div style="text-align:center; height:${isStandalone?'100%':'auto'}; display:flex; align-items:center; justify-content:center;"><img src="${panelData.data.src || panelData.data}" alt="${panelData.data.alt || 'GenAI Image'}" style="max-height: ${isStandalone?'calc(100vh - 40px)':'500px'}; max-width: 100%; border-radius: 8px; object-fit: contain;"></div>`;
                     mainGrid.appendChild(panel);
 
                 } else if (panelData.type === 'video') {
-                    panel.innerHTML += `<div style="text-align:center;"><video controls style="max-width: 100%; border-radius: 8px;"><source src="${panelData.data.src}" type="${panelData.data.mime_type || 'video/mp4'}">Your browser does not support the video tag.</video></div>`;
+                    panel.innerHTML += `<div style="text-align:center; height:${isStandalone?'100%':'auto'}; display:flex; align-items:center; justify-content:center;"><video controls style="max-height: ${isStandalone?'calc(100vh - 40px)':'500px'}; max-width: 100%; border-radius: 8px;"><source src="${panelData.data.src || panelData.data}" type="${panelData.data.mime_type || 'video/mp4'}">Your browser does not support the video tag.</video></div>`;
                     mainGrid.appendChild(panel);
 
                 } else if (panelData.type === 'audio') {
-                    panel.innerHTML += `<div style="text-align:center;"><audio controls style="width: 100%; margin-top: 10px;"><source src="${panelData.data.src}" type="${panelData.data.mime_type || 'audio/mpeg'}">Your browser does not support the audio element.</audio></div>`;
+                    panel.innerHTML += `<div style="text-align:center;"><audio controls style="width: 100%; margin-top: 10px;"><source src="${panelData.data.src || panelData.data}" type="${panelData.data.mime_type || 'audio/mpeg'}">Your browser does not support the audio element.</audio></div>`;
                     mainGrid.appendChild(panel);
 
                 } else if (panelData.type === 'pdf') {
-                    panel.innerHTML += `<div style="height:450px;"><iframe src="${panelData.data.src}" width="100%" height="100%" style="border:none; border-radius:8px;"></iframe></div>`;
+                    panel.innerHTML += `<div style="height:${isStandalone?'calc(100vh - 40px)':'450px'};"><iframe src="${panelData.data.src || panelData.data}" width="100%" height="100%" style="border:none; border-radius:8px;"></iframe></div>`;
                     mainGrid.appendChild(panel);
                 }
             });
