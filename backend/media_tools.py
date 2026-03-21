@@ -51,8 +51,13 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
         contents = [types.Content(role="user", parts=contents_parts)]
 
         generate_content_config = types.GenerateContentConfig(
-            temperature = 0.5,
-            response_modalities = ["IMAGE"]
+            temperature = 1,
+            response_modalities = ["IMAGE"],
+            image_config=types.ImageConfig(
+              aspect_ratio="auto",
+              image_size="1K",
+              output_mime_type="image/png",
+            )
         )
 
         response = client.models.generate_content(
