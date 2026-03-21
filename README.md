@@ -152,8 +152,15 @@ The seed securely mounts the `google-genai` Python SDK against the `global` Vert
 - The LLM injects that string into an `image` grid block in the dashboard, rendering generative media gracefully.
 
 ### 3. Cloud Storage Asset Mounting
-The backend provides architectural tooling designed to authenticate with Google Cloud Storage (`storage.Client()`). The dashboard engine has native wrappers `video`, `audio`, and `pdf`. The agent can seamlessly query a bucket dataset and pass the resultant cloud URLs directy into the dashboard for users to playback or verify.
-- *PDF Engine Enhancement*: Deep linking and highlighting are natively parsed! Natively passes `search` parameters to dynamically jump the scrollbar and highlight context whenever the LLM intends to point users directly to an evidence citation inside massive PDFs (`#search="keyword"`).
+The backend provides architectural tooling designed to authenticate with Google Cloud Storage (`storage.Client()`). The dashboard engine has native wrappers for `video` and `audio`. The agent can seamlessly query a bucket dataset and pass the resultant cloud URLs directly into the dashboard for users to playback.
+- **Document Hydration**: For PDFs or static documents, agents are instructed to actively avoid nested sandboxed iframes. Instead, they output native Markdown hyperlinks (e.g., `[Source](url.pdf#search=keyword)`) directly in the chat pipeline. The host Gemini Enterprise UI automatically intercepts these links and hydrates them into its rich, interactive Document Overlay Chips (featuring native scroll and highlight logic).
+
+### 4. Grounding & Citations
+Custom ADK agents deployed to Gemini Enterprise via the A2A protocol do not currently exhibit built-in, automatic translation of backend data sources into native GE grounding chips (like the interactive globe `🌐` citations). 
+
+Citation handling is the explicit architectural responsibility of the agent implementation. To achieve reliable citing without breaking format:
+- Instruct the agent's persona to natively output standard Markdown HTTP links tracking back to source records within its conversational response.
+- Rely on the host platform's inherent Markdown parsers (which often unpack standard URLs gracefully), or engineer custom grounding data protocols within specific endpoint forks depending on the client's production requirements.
 
 ---
 
