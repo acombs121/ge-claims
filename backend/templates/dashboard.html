@@ -507,14 +507,24 @@
                     mainGrid.appendChild(panel);
 
                 } else if (panelData.type === 'pdf') {
-                    let pdfUrl = panelData.data.src || panelData.data;
+                    let rawPdfUrl = panelData.data.src || panelData.data;
+                    
+                    // Because A2UI heavily sandboxes the parent WebFrame (killing native Chrome PDF plugins),
+                    // we proxy the stream via the HTML-native Google Docs Viewer to guarantee rendering! 
+                    let proxyUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(rawPdfUrl)}&embedded=true`;
+                    
+                    let searchBadge = '';
                     if (panelData.data.search) {
-                         const cleanSearch = panelData.data.search.replace(/"/g, '');
-                         pdfUrl += `#search=${encodeURIComponent(cleanSearch)}`;
-                    } else if (panelData.data.page) {
-                         pdfUrl += `#page=${encodeURIComponent(panelData.data.page)}`;
+                        const cleanSearch = panelData.data.search.replace(/"/g, '');
+                        // Inject a beautiful floating sticky context badge to augment the loss of the native scroll-highlighting functionality
+                        searchBadge = `<div style="position:absolute; top:12px; right:24px; z-index:10; background:rgba(254, 243, 199, 0.95); color:#92400e; padding:6px 14px; border-radius:6px; font-size:0.85rem; font-weight:500; font-family:system-ui; box-shadow:0 2px 4px rgba(0,0,0,0.1); border:1px solid #fcd34d; backdrop-filter: blur(4px);">Suggested Context: <b>"${cleanSearch}"</b></div>`;
                     }
-                    panel.innerHTML += `<div style="height:${isStandalone?'calc(100vh - 90px)':'600px'};"><embed src="${pdfUrl}" width="100%" height="100%" type="application/pdf" style="border:none; border-radius:8px;"></embed></div>`;
+                    
+                    panel.innerHTML += `
+                        <div style="height:${isStandalone?'calc(100vh - 90px)':'600px'}; position:relative;">
+                            ${searchBadge}
+                            <iframe src="${proxyUrl}" width="100%" height="100%" style="border:none; border-radius:8px; background:#f1f5f9;"></iframe>
+                        </div>`;
                     mainGrid.appendChild(panel);
                 }
             });
