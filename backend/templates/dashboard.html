@@ -525,50 +525,6 @@
                             </div>
                         </div>`;
                     mainGrid.appendChild(panel);
-
-                } else if (panelData.type === 'pdf') {
-                    let rawPdfUrl = panelData.data.src || panelData.data;
-                    const containerId = 'pdf-wrap-' + Math.random().toString(36).substr(2, 9);
-                    
-                    panel.innerHTML += `
-                        <div style="height:${isStandalone?'calc(100vh - 90px)':'600px'}; overflow-y:auto; overflow-x:auto; background:#cbd5e1; border-radius:8px; display:flex; flex-direction:column; align-items:center;">
-                            <div id="${containerId}" style="width:100%; display:flex; flex-direction:column; align-items:center; padding: 24px 0;">
-                                <div style="color:#475569; font-family:system-ui; display:flex; align-items:center; gap:8px;">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-                                    Rasterizing Native Document View...
-                                </div>
-                            </div>
-                        </div>`;
-                    mainGrid.appendChild(panel);
-
-                    setTimeout(() => {
-                        const pdfjsLib = window['pdfjs-dist/build/pdf'];
-                        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                        
-                        pdfjsLib.getDocument(rawPdfUrl).promise.then(async (pdf) => {
-                            const container = document.getElementById(containerId);
-                            container.innerHTML = ''; // clear loading state
-                            
-                            // Dynamically rasterize the first 3 pages of the PDF purely in HTML5 Graphics
-                            const pagesToRender = Math.min(pdf.numPages, 3);
-                            for (let i = 1; i <= pagesToRender; i++) {
-                                const page = await pdf.getPage(i);
-                                const viewport = page.getViewport({scale: 1.3});
-                                const canvas = document.createElement('canvas');
-                                const ctx = canvas.getContext('2d');
-                                canvas.height = viewport.height;
-                                canvas.width = viewport.width;
-                                canvas.style.marginBottom = '20px';
-                                canvas.style.maxWidth = '100%';
-                                canvas.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
-                                
-                                container.appendChild(canvas);
-                                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-                            }
-                        }).catch(err => {
-                            document.getElementById(containerId).innerHTML = `<div style="color:#ef4444; padding:20px; font-family:system-ui;">Native Rendering Failed: ${err.message}. A valid document stream was not found.</div>`;
-                        });
-                    }, 100);
                 }
             });
         }
