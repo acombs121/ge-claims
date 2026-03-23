@@ -1,230 +1,75 @@
-# Gemini Enterprise (GE) A2UI Agent Seed
+# GE A2UI Agent Seed Project (Acme Corp)
 
-This repository is a **Seed Template** designed by the CAIT team to rapidly spin up and deploy custom AI strategy agents with advanced interactive **A2UI visualizations** served via `WebFrame` components.
-
----
-
-## 🏗️ Architecture: Dynamic HTML Injection
-
-To bypass constraints where custom widgets (like Maps or rich interactive charts) are not bundled into local workspaces, this agent leverages **Backend Orchestration**:
-
-1.  The **LLM** yields a simple JSON payload declared as a `CustomView`.
-    ```json
-    {
-      "CustomView": {
-        "template": "inventory",
-        "data": { "kpis": [...], "table": [...] }
-      }
-    }
-    ```
-2.  The **Python Executor** intercepts this payload, reads `backend/templates/{template_name}.html`, injects the data directly into the header script variables (`window.INJECTED_DATA`), and wraps it in a standard `WebFrame` component frame.
-3.  The dashboard loads seamlessly in client views with **Lightweight loading tiers**.
+This repository serves as a generic, reusable **"seed"** for building Gemini Enterprise (GE) agents that leverage the **A2UI (Agent-to-Agent User Interface)** engine. It comes pre-configured with industry-agnostic widgets and clean, minimalist styling.
 
 ---
 
-## 📋 Prerequisites & Permissions (Allowlist Setup)
+## 🏗️ Architecture
 
-To run A2UI agents on Argolis:
+The seed project uses a **Server-Side Rendering (SSR)** approach for A2UI components:
 
-1.  **Vertex AI API**:
-    - Ensure the `aiplatform.googleapis.com` (Vertex AI API) is fully enabled in your Google Cloud Project: `gcloud services enable aiplatform.googleapis.com`. This is strictly required for the Gemini Image Generation models to function properly natively.
-2.  **Cloud Run Service Account**:
-    Ensure the Service account deployed with has correct permissions to query Vertex AI:
-    - `roles/aiplatform.user`
-    - `roles/storage.objectViewer` (If pulling unstructured data assets)
+1.  **Agent Orchestration**: The AI agent (Gemini) generates a `CustomView` JSON structure.
+2.  **Template Injection**: The Python backend (`main.py`) reads modular HTML from `backend/templates/`, injects data from the tool context into `window.INJECTED_DATA`, and serves it via a `WebFrame`.
+3.  **Cross-App Actions**: Supports bi-directional communication between the agent and external apps via `a2a.action` event triggers.
 
 ---
 
-## 📂 Folder Structure
+## 📂 Project Structure
 
--   `backend/templates/`: Contains modular HTML framing injection points.
-    -   `dashboard.html`: Generic KPIs + visually rich Analysis Charts.
-    -   `inventory.html`: Grid layout for Supply Chain/Tracking view structures.
-
-***
-
-## 🗺️ Google Maps Integration (Heatmaps)
-
-The `map-heatmap` widget has been radically upgraded from open-source Leaflet to the enterprise **Google Maps JS API** utilizing the `visualization` library. 
-
-To activate this feature in your custom agent:
-1. Enable the **Maps JavaScript API** inside your Google Cloud Console.
-2. Generate an API Key restricted to HTTP referrers.
-3. Open `backend/templates/dashboard.html` and locate the hardcoded script tag on Line 9:
-   ```html
-   <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY_HERE&libraries=visualization"></script>
-   ```
-4. Replace `YOUR_GOOGLE_MAPS_API_KEY_HERE` with your active token.
-*(Note: A Leaflet fallback remains commented-out in the HTML header and Javascript block for fully-offline rendering environments).*
--   `backend/agent_executor.py`: Orchestrated layout handler resolving template bridging overlays.
--   `backend/prompt_builder.py`: Instructions advising the agent on which template framing structure is optimal to avoid syntax crash dependencies.
+-   `backend/templates/dashboard.html`: The core A2UI engine. Supports dynamic rendering of:
+    -   `map-heatmap`: Integrated Google Maps with density layers.
+    -   `d3-network`: Force-directed relationship graphs.
+    -   `simulator`: Interactive logic-bound tradeoff modeling.
+    -   `action-plan`: A generic, editable form-to-sync workflow.
+-   `backend/agent.py`: Generic system instructions and tool routing for **Acme Corp**.
+-   `backend/mock_data_tool.py`: Industry-agnostic data generators (Revenue, Growth, Regions).
 
 ---
 
-## ⚙️ Cloning & Deploying Guidelines
+## 🚀 Getting Started
 
-### Step 1: Clone
-Copy this structure into your target repository path context.
+### 1. Clone & Customize
+Clone this repository and replace "Acme Corp" with your client's name in `agent.py` and `mock_data_tool.py`.
 
-### Step 2: Configure Display metadata
-Update `backend/main.py` inside the `AgentCard` declarations with your specific descriptive metadata naming anchors.
+### 2. Configure Google Maps
+To use the heatmap widget:
+- Enable the **Maps JavaScript API**.
+- Update the API Key in `backend/templates/dashboard.html`.
 
-### Step 3: Deploy
-Execute to push direct updates aligned with Cloud Run bridging constraints:
+### 3. Deploy to Cloud Run
 ```bash
-./deploy.sh
+cd backend
+./deploy.sh <YOUR_PROJECT_ID> <SERVICE_NAME>
 ```
 
 ---
 
-## 📑 Model Card Placement Guideline
-Inside your cloned documentation framework, create a `MODEL_CARD.md` tracking model calibration:
+## 🧩 A2UI Widget Specifications
 
-```markdown
-# Model Card: [Agent Name]
-- **Base Model**: Gemini-3-Flash-Preview
-- **Persona**: [Describe intent e.g., Supply Chain Advisor]
-- **Data Groundings**: [List BQ datasets, Vertex Search indexes]
-- **Safety Thresholds**: Strict boundary conditions declaring safe alignment transparent outputs.
-```
+### Map Heatmap
+Plot density or hotspots with interactive tooltips.
+- **Data Type**: `map-heatmap`
+- **Fields**: `lat`, `lng`, `weight`, `entity_name`, `tooltip`.
 
----
+### D3 Relationship Graph
+Visualize complex node-edge connectivity with physics clamping.
+- **Data Type**: `d3-network`
+- **Fields**: `id`, `label`, `color`, `radius`, `external_id`.
 
-## 🔌 A2UI Agent Card Specification
-When registering your endpoint inside Gemini Enterprise (GE), you **must** supply specific A2A bridging protocols, transport configurations, and formal A2UI extension dictionaries within your JSON profile. 
+### Scenario Simulator
+Model tradeoffs with interactive sliders and non-linear logic.
+- **Data Type**: `simulator`
+- **Variables**: Fully customizable sliders.
+- **Logic**: Injected via Javascript `onUpdateBody`.
 
-If you do not declare `"protocolVersion": "0.3.0"` and the default I/O modes, GE will reject the payload. 
-
-Use this verified template:
-```json
-{
-  "name": "YOUR_AGENT_NAME",
-  "description": "YOUR_AGENT_DESCRIPTION",
-  "url": "https://YOUR-DEPLOYED-APP.run.app",
-  "version": "1.0.0",
-  "protocolVersion": "0.3.0",
-  "preferredTransport": "JSONRPC",
-  "defaultInputModes": [
-    "text/plain"
-  ],
-  "defaultOutputModes": [
-    "text/plain",
-    "application/json"
-  ],
-  "capabilities": {
-    "streaming": true,
-    "extensions": [
-      {
-        "uri": "https://a2ui.org/a2a-extension/a2ui/v0.8",
-        "description": "Ability to render A2UI",
-        "required": false,
-        "params": {
-          "supportedCatalogIds": [
-            "https://a2ui.org/specification/v0_8/standard_catalog_definition.json"
-          ],
-          "acceptsInlineCatalogs": true
-        }
-      }
-    ]
-  },
-  "skills": [
-    {
-      "id": "chat",
-      "name": "Base Chat Interaction",
-      "description": "YOUR_SKILL_DESCRIPTION",
-      "tags": ["your_tag"],
-      "examples": [
-        "Example User Query..."
-      ]
-    }
-  ]
-}
-```
+### Action Plan
+Bridge conversational planning into deterministic execution.
+- **Data Type**: `action-plan`
+- **Actions**: Packages form state into a `COMMIT_ACTION_PLAN` payload.
 
 ---
 
-## 🌟 Summary of Engine Capabilities
-
-This agent seed is pre-configured with a powerful `CustomView` frontend engine mapping natively to backend tools, giving your LLM an advanced toolbelt for rendering rich interactions and multimodal data.
-
-### 1. The Dynamic Hybrid UI Engine
-The core rendering environment revolves around `backend/templates/dashboard.html`. Your LLM can construct a flexible JSON `grid` spanning the following components:
-- **`d3-network`**: Instantiates a premium, interactive D3.js force-directed physics graph (with cursor tooltips) using `nodes` and `edges` logic.
-- **`map-heatmap`**: Spawns a Leaflet + CARTO dark/light basemap projecting dense geospatial hot-spots from lat/lng `points`.
-- **`form`**: Constructs a completely dynamic HTML `<form>`. The `submit` button natively bridges a postMessage payload *back* up to Agent-Stage/GE for true bi-directional functionality.
-- **`chart` / `table`**: Standard Chart.js panels and HTML tabular arrays.
-
-- **`vega`**: Natively processes complex Vega and Vega-Lite chart schemas inside the `CustomView`, enabling advanced multidimensional data storytelling across the dashboard without writing code.
-- **`simulator`**: Injects a self-contained Scenario Simulator widget. The Agent models an array of variable controls (sliders) and a bound math formula (`onUpdateBody`) mapped to a target Chart. This empowers users to manipulate sliders and see changes graphically locally without pinging the LLM.
-- **`3p-widget`**: Mocks seamless 3rd-party SaaS integrations (like Salesforce or Workday) by instantiating beautifully native Action Panels (forms/summaries) styled accurately in the designated brand themes.
-
-*(For simple, isolated elements, the Agent is configured to intuitively auto-detect "standalone" widgets and explicitly scale their viewport heights to 100% bounds dynamically.)*
-
-### 2. Multimodal Generative Media Pipelines
-The seed securely mounts the `google-genai` Python SDK against the `global` Vertex AI registry. You can instruct the agent to generate completely new images via the **Gemini 3.1 Flash Image Preview** endpoint. 
-- You can freely pass uploaded images (`.jpg`, `.png`) alongside text descriptions. The `ToolContext` autonomously natively extracts user uploads and injects them seamlessly alongside the target text array!
-- The backend natively parses the bytes, base64 encodes them, and hands the LLM a clean `data:image/` string.
-- The LLM injects that string into an `image` grid block in the dashboard, rendering generative media gracefully.
-
-### 3. Cloud Storage Asset Mounting
-The backend provides architectural tooling designed to authenticate with Google Cloud Storage (`storage.Client()`). The dashboard engine has native wrappers for `video` and `audio`. The agent can seamlessly query a bucket dataset and pass the resultant cloud URLs directly into the dashboard for users to playback.
-- **Document Hydration**: For PDFs or static documents, agents are instructed to actively avoid nested sandboxed iframes. Instead, they output native Markdown hyperlinks (e.g., `[Source](url.pdf#search=keyword)`) directly in the chat pipeline. The host Gemini Enterprise UI automatically intercepts these links and hydrates them into its rich, interactive Document Overlay Chips (featuring native scroll and highlight logic).
-
-### 4. Grounding & Citations
-Custom ADK agents deployed to Gemini Enterprise via the A2A protocol do not currently exhibit built-in, automatic translation of backend data sources into native GE grounding chips (like the interactive globe `🌐` citations). 
-
-Citation handling is the explicit architectural responsibility of the agent implementation. To achieve reliable citing without breaking format:
-- Instruct the agent's persona to natively output standard Markdown HTTP links tracking back to source records within its conversational response.
-- Rely on the host platform's inherent Markdown parsers (which often unpack standard URLs gracefully), or engineer custom grounding data protocols within specific endpoint forks depending on the client's production requirements.
-
----
-
-## 🚀 Cloning Instructions for Antigravity IDE
-
-When you are ready to expand this seed into a new industry or use case, copy the following prompt, fill in your brackets `[...]`, and paste it into a new Antigravity session:
-
-```markdown
-I want to expand the `ge-agent-seed` repository into a brand new agent for [TARGET INDUSTRY / USE CASE].
-
-Please follow these exact execution steps:
-
-1. **Clone the Repository**:
-   - Recursively copy `/Users/rtejada/Workspace/ge-agent-seed` into a new directory named `[new-agent-directory]`. 
-   - Work entirely within the new directory for the remainder of this prompt.
-
-2. **Service Name & Deployment Configuration**:
-   - Open `backend/deploy.sh`.
-   - Update `SERVICE_NAME` to `[new-agent-name]`.
-   - *Do not execute the deployment just yet.*
-
-3. **Tool & Data Configuration**:
-   - Open `backend/mock_data_tool.py`.
-   - Delete the generic Acme Corp data. 
-   - Build new tool functions returning comprehensive mock data for [TARGET INDUSTRY]. Include at least:
-     - A tabular dataset (`columns` and `rows`) for a Native DataGrid.
-     - A valid Vega-Lite chart `spec` object for a Native VegaChart.
-     - A JSON schema payload containing an array of `fields` (with labels/types) intended for a dynamic HTML `<form>`.
-     - Relational JSON payloads mapping `nodes` and `edges` intended for a `d3-network` physics simulator.
-     - A geospatial heatmap dataset mapping `[lat, lng, density]` pairings intended for a Leaflet `map-heatmap`.
-     - High-level metric objects for dashboard KPIs.
-
-4. **Agent & Prompt Mapping Configuration (CRITICAL)**:
-   - Open `backend/agent.py`.
-   - Update `SYSTEM_INSTRUCTION` to reflect the new persona: **[PERSONA DESCRIPTION]**.
-   - Carefully map the new tools to specific A2UI outputs. 
-   - **Pitfall Avoidance**: Explicitly state the following routing logic directly into the persona: 
-      *"If asked for [X], output a Native A2UI Array containing a DataGrid. 
-      If asked for [Y], output a Native A2UI Array containing a VegaChart. 
-      If asked for [Z], output a CustomView dashboard template. 
-      If asked for an interactive submission form, output a CustomView dashboard template explicitly declaring a `form` type panel in your layout grid. 
-      If asked for network configurations, output a CustomView dashboard template explicitly declaring a `d3-network` type panel in your layout grid.
-      If asked for hotspots, output a CustomView dashboard explicitly declaring a `map-heatmap` type panel in your layout grid."*
-
-5. **Generate the Agent Card Artifact**:
-   - Create a `[agent_name]_agent_card.json` artifact in our chat context.
-   - It must securely follow the A2UI Agent Card Specification (Protocol Version `0.3.0`, `JSONRPC` transport, A2UI `v0.8` extension capabilities).
-   - Generate relevant skill examples for my new use case spanning Native Charts, DataGrids, Forms, D3 Networks, and Map Heatmaps.
-
-6. **Deploy**:
-   - Make `deploy.sh` executable and run it to push the new container to Cloud Run. Be prepared for the script's silent environment-variable auto-update.
-```
+## 🛡️ Security & Best Practices
+- **Allowlisting**: Always ensure your Cloud Run service URL is allowlisted in your GE Organization settings.
+- **OAuth 2.0**: For multi-tenant production agents, refer to the `OAuth Register` guide in the root directory.
+- **Least Privilege**: Grant only `roles/aiplatform.user` to the service account.

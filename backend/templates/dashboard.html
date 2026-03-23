@@ -409,7 +409,7 @@
                         const node = svg.append("g")
                             .selectAll("circle").data(nodes).join("circle")
                             .attr("r", d => d.radius || 12)
-                            .attr("fill", d => d.color ? d.color : (d.npi ? 'var(--accent-primary)' : '#94a3b8'))
+                            .attr("fill", d => d.color ? d.color : (d.external_id ? 'var(--accent-primary)' : '#94a3b8'))
                             .on("mouseover", function(event, d) {
                                 tooltip.transition().duration(200).style("opacity", 1);
                                 
@@ -696,9 +696,9 @@
                     if (existingHeader) existingHeader.remove();
                     
                     const primaryColor = isDark ? '#38bdf8' : '#2563eb';
-                    const logoUrl = isDark ? 'https://crm-mock-app-g2u64mk5wq-uc.a.run.app/logos/light-logo.png' : 'https://crm-mock-app-g2u64mk5wq-uc.a.run.app/logos/dark-logo.png';
+                    const logoUrl = data.crm_logo_url || (isDark ? 'https://placehold.co/200x50/0f172a/38bdf8?text=CRM+LOGO' : 'https://placehold.co/200x50/ffffff/2563eb?text=CRM+LOGO');
                     const inputBg = isDark ? '#334155' : '#ffffff';
-                    const physicianName = panelData.data.physician_name || "Dr. Aris Thorne";
+                    const entityName = data.entity_name || "Acme Corp Entity";
                     const numSteps = (panelData.data.steps || []).length;
 
                     let jsCode = `
@@ -717,17 +717,19 @@
                             });
                         }
                         const payloadData = {
-                            account: { physician_name: '${physicianName.replace(/'/g, "\\'")}', crm_id: 'V-GENERATED' },
-                            action_type: 'COMMIT_WIN_BACK_PLAN',
+                            account: { entity_name: '${entityName.replace(/'/g, "\\'")}', crm_id: 'GENERIC-ID' },
+                            action_type: 'COMMIT_ACTION_PLAN',
                             timestamp: new Date().toISOString(),
                             journey_steps: steps
                         };
-                        console.log('CRM Plan Submitted:', payloadData);
+                        console.log('Action Plan Submitted:', payloadData);
                         
-                        fetch('https://crm-mock-app-g2u64mk5wq-uc.a.run.app/api/interactions', {
+                        const apiUrl = data.crm_api_url || 'https://example.com/api/interactions';
+                        fetch(apiUrl, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payloadData)
+                            body: JSON.stringify({ actionData: { payload: payloadData } })
+                        }).then(r => console.log('Direct CRM Post result:', r.status)).catch(e => console.error(e));
                         }).then(r => console.log('Direct CRM Post result:', r.status)).catch(e => console.error(e));
                         
                         const btn = this.querySelector('.btn-submit');
@@ -758,7 +760,7 @@
                                     </div>
                                 </div>
                                 <div class="form-group" style="margin-bottom: 0;">
-                                    <label class="form-label">Clinical / RAG Description</label>
+                                    <label class="form-label">Plan Description & Guidance</label>
                                     <textarea class="form-input" style="background: ${inputBg};" name="description_${i}" rows="3">${(step.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
                                 </div>
                             </div>
@@ -770,7 +772,7 @@
                     panel.innerHTML += `
                         <div style="display: flex; flex-direction: column; height: ${isStandalone ? 'calc(100vh - 20px)' : '100%'};">
                             <div style="padding: 16px 20px; border-bottom: 1px solid ${gridColor}; display: flex; justify-content: space-between; align-items: center; background: #0f172a; border-radius: 12px 12px 0 0;">
-                                <img src="https://crm-mock-app-g2u64mk5wq-uc.a.run.app/logos/light-logo.png" alt="CRM Logo" style="height: 24px;">
+                                <img src="${logoUrl}" alt="Logo" style="height: 24px;">
                             </div>
                             <div style="flex: 1; overflow-y: auto; padding: 20px; background: ${isDark ? '#0f172a' : '#ffffff'}; border-radius: 0 0 12px 12px;">
                                 <form onsubmit="${jsCode}">
