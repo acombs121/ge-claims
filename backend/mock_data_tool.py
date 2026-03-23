@@ -61,3 +61,17 @@ def process_form_submission(payload: dict, tool_context: ToolContext = None) -> 
     print(payload)
     print(f"-----------------------------------------")
     return f"Successfully processed payload containing keys: {list(payload.keys())}!"
+
+def clean_json_output(raw_text: str) -> str:
+    """
+    Utility function to strip markdown tags (like ```json) from LLM outputs.
+    CRITICAL: Use this before wrapping LLM tool outputs into json.loads() to prevent A2UI parser crashes.
+    """
+    text = raw_text.strip()
+    if text.startswith("```json"):
+        text = text[7:]
+    if text.startswith("```"):
+        text = text[3:]
+    if text.endswith("```"):
+        text = text[:-3]
+    return text.strip()

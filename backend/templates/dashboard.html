@@ -6,9 +6,13 @@
     <title>Analytics Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY_HERE&libraries=visualization"></script>
+    
+    <!-- LEAFLET FALLBACK ENGINE (Uncomment scripts below and JS block to revert to Leaflet)
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    -->
     <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
@@ -77,21 +81,22 @@
             padding: 16px;
             flex: 1;
             min-width: 120px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
             position: relative;
             overflow: hidden;
         }
-        .kpi-card::before {
+        .kpi-title::before {
             content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
             background: var(--accent-primary);
+            margin-right: 6px;
+            margin-bottom: 1px;
         }
-        .kpi-card.warning::before { background: var(--warning); }
-        .kpi-card.success::before { background: var(--success); }
+        .kpi-card.warning .kpi-title::before { background: var(--warning); }
+        .kpi-card.success .kpi-title::before { background: var(--success); }
         .kpi-title {
             font-size: 0.75rem;
             text-transform: uppercase;
@@ -115,6 +120,12 @@
         @media (max-width: 600px) {
             .main-grid { grid-template-columns: 1fr; }
         }
+        
+        /* Override Google Maps InfoWindow Defaults */
+        .gm-ui-hover-effect { display: none !important; }
+        .gm-style .gm-style-iw-c { padding: 8px 10px !important; border-radius: 8px !important; }
+        .gm-style-iw-d { padding: 0 !important; overflow: auto !important; }
+
         .panel {
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
@@ -275,9 +286,24 @@
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                            plugins: { legend: { display: false } },
+                            plugins: { 
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) label += ': ';
+                                            if (context.parsed.y !== null) label += context.parsed.y;
+                                            if (panelData.data.extra_labels && panelData.data.extra_labels[context.dataIndex]) {
+                                                label += ' (' + panelData.data.extra_labels[context.dataIndex] + ')';
+                                            }
+                                            return label;
+                                        }
+                                    }
+                                }
+                            },
                             scales: {
-                                y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 } } },
+                                y: { max: panelData.data.yMax || undefined, grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 } } },
                                 x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } }
                             }
                         }
@@ -348,7 +374,7 @@
                     const containerId = 'd3Canvas_' + (chartIndex++);
                     const d3Container = document.createElement('div');
                     d3Container.id = containerId;
-                    d3Container.style = `position: relative; height: ${dynamicPanelHeight}; background: rgba(0,0,0,0.02); border-radius: 8px; overflow: hidden;`;
+                    d3Container.style = `position: relative; height: ${isStandalone ? 'calc(100vh - 20px)' : '450px'}; background: rgba(0,0,0,0.02); border-radius: 8px; overflow: hidden;`;
                     panel.appendChild(d3Container);
                     mainGrid.appendChild(panel);
 
@@ -360,6 +386,12 @@
 
                         const nodes = panelData.data.nodes || [];
                         const links = panelData.data.edges || [];
+
+                        // Inject Absolute Overlay Title
+                        const titleOverlay = document.createElement('div');
+                        titleOverlay.style = `position: absolute; top: 16px; left: 20px; z-index: 10; pointer-events: none; font-family: Inter, sans-serif;`;
+                        titleOverlay.innerHTML = `<h3 style="margin: 0; font-size: 13px; font-weight: 600; color: ${textColor}; letter-spacing: 0.5px;">RELATIONSHIP GRAPH</h3><p style="margin: 2px 0 0 0; font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Geographic & Peer Influences</p>`;
+                        d3Container.appendChild(titleOverlay);
 
                         const simulation = d3.forceSimulation(nodes)
                             .force("link", d3.forceLink(links).id(d => d.id).distance(100))
@@ -377,10 +409,17 @@
                         const node = svg.append("g")
                             .selectAll("circle").data(nodes).join("circle")
                             .attr("r", d => d.radius || 12)
-                            .attr("fill", d => d.color || 'var(--accent-primary)')
+                            .attr("fill", d => d.color ? d.color : (d.npi ? 'var(--accent-primary)' : '#94a3b8'))
                             .on("mouseover", function(event, d) {
                                 tooltip.transition().duration(200).style("opacity", 1);
-                                tooltip.html(d.label + (d.value ? `<br/><span style="color:#94a3b8; font-weight:400;">Val: ${d.value}</span>` : ''))
+                                
+                                // Auto-hydrate random LLM object keys for richer hover context
+                                const exclude = ['id', 'label', 'x', 'y', 'vx', 'vy', 'index', 'fx', 'fy', 'radius', 'color', 'group', 'value', 'title', 'tooltip'];
+                                const extraProps = Object.entries(d).filter(([k]) => !exclude.includes(k) && typeof d[k] !== 'object');
+                                const extraHtml = extraProps.map(([k,v]) => `<br/><span style="color:#64748b; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">${k}:</span> <span style="color:#cbd5e1; font-size:10px;">${v}</span>`).join('');
+                                const tooltipTextHtml = d.tooltip ? `<div style="color:#cbd5e1; font-size:10.5px; line-height:1.3; margin-top:4px; max-width: 180px;">${d.tooltip}</div>` : '';
+                                
+                                tooltip.html('<strong style="font-size:12px;">' + d.label + '</strong>' + (d.value ? `<br/><span style="color:#94a3b8; font-weight:400; font-size:11px;">Measurement: ${d.value}</span>` : '') + tooltipTextHtml + extraHtml)
                                     .style("left", (event.offsetX + 15) + "px")
                                     .style("top", (event.offsetY - 20) + "px");
                             })
@@ -398,9 +437,13 @@
                             .style("font-size", "10px").style("font-weight", "600").style("fill", textColor);
 
                         simulation.on("tick", () => {
+                            const padding = 20;
+                            node.attr("cx", d => d.x = Math.max(padding, Math.min(width - padding, d.x)))
+                                .attr("cy", d => d.y = Math.max(padding, Math.min(height - padding, d.y)));
+                            
                             link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
                                 .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
-                            node.attr("cx", d => d.x).attr("cy", d => d.y);
+
                             labels.attr("x", d => d.x).attr("y", d => d.y);
                         });
                     }, 50);
@@ -415,6 +458,104 @@
 
                     setTimeout(() => {
                         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                        
+                        const mapOptions = {
+                            zoom: panelData.data.zoom || 11,
+                            center: { lat: panelData.data.centerLat || 42.3601, lng: panelData.data.centerLng || -71.0589 },
+                            mapTypeId: 'roadmap',
+                            disableDefaultUI: true,
+                            styles: isDark ? [
+                                { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+                                { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+                                { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+                                { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+                                { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+                                { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
+                                { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
+                                { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
+                                { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
+                                { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
+                                { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
+                                { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
+                                { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] }
+                            ] : [
+                                { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
+                                { featureType: "administrative.neighborhood", stylers: [{ visibility: "off" }] }
+                            ]
+                        };
+
+                        const map = new google.maps.Map(document.getElementById(containerId), mapOptions);
+
+                        if (panelData.data.points) {
+                            const heatData = panelData.data.points.map(p => {
+                                if (Array.isArray(p)) return new google.maps.LatLng(p[0], p[1]);
+                                return {
+                                    location: new google.maps.LatLng(p.lat, p.lng),
+                                    weight: (p.weight || p.competitor_spike || 1.0) * 10
+                                };
+                            });
+                            
+                            const heatmap = new google.maps.visualization.HeatmapLayer({
+                                data: heatData,
+                                radius: panelData.data.radius ? panelData.data.radius * 2 : 35, 
+                                opacity: 0.8,
+                                map: map,
+                                gradient: [
+                                  "rgba(0, 255, 255, 0)",
+                                  "rgba(0, 255, 255, 1)",
+                                  "rgba(0, 191, 255, 1)",
+                                  "rgba(0, 127, 255, 1)",
+                                  "rgba(0, 63, 255, 1)",
+                                  "rgba(0, 0, 255, 1)",
+                                  "rgba(0, 0, 223, 1)",
+                                  "rgba(0, 0, 191, 1)",
+                                  "rgba(0, 0, 159, 1)",
+                                  "rgba(0, 0, 127, 1)",
+                                  "rgba(63, 0, 91, 1)",
+                                  "rgba(127, 0, 63, 1)",
+                                  "rgba(191, 0, 31, 1)",
+                                  "rgba(255, 0, 0, 1)"
+                                ]
+                            });
+
+                            const infoWindow = new google.maps.InfoWindow();
+                            panelData.data.points.forEach(p => {
+                                if (!Array.isArray(p) && (p.tooltip || p.physician_name) && p.lat && p.lng) {
+                                    const tooltipHtml = p.physician_name && p.spike_metric
+                                        ? `<div style="font-family: Inter, sans-serif; font-size: 13px; text-align: center; color: #1e293b; margin-top: 2px; padding: 2px;"><b>${p.physician_name}</b><br/><span style="color: #64748b; font-size: 11px;">${p.spike_metric}</span></div>`
+                                        : `<div style="font-family: Inter, sans-serif; font-size: 13px; text-align: center; color: #1e293b; margin-top: 2px; padding: 2px;"><b>${p.tooltip}</b></div>`;
+
+                                    const marker = new google.maps.Marker({
+                                        position: { lat: p.lat, lng: p.lng },
+                                        map: map,
+                                        title: p.physician_name || p.tooltip,
+                                        icon: {
+                                            path: google.maps.SymbolPath.CIRCLE,
+                                            fillColor: '#ef4444',
+                                            fillOpacity: 0.2,
+                                            strokeColor: '#ef4444',
+                                            strokeWeight: 2,
+                                            scale: 8
+                                        }
+                                    });
+
+                                    marker.addListener("mouseover", () => {
+                                        infoWindow.setContent(tooltipHtml);
+                                        infoWindow.open({
+                                            anchor: marker,
+                                            map,
+                                            shouldFocus: false
+                                        });
+                                    });
+                                    marker.addListener("mouseout", () => {
+                                        infoWindow.close();
+                                    });
+                                }
+                            });
+                        }
+
+                        // --- LEAFLET IMPLEMENTATION (Commented-out Fallback) ---
+                        /*
                         const map = L.map(containerId).setView([panelData.data.centerLat || 0, panelData.data.centerLng || 0], panelData.data.zoom || 2);
                         
                         const tileUrl = isDark 
@@ -426,12 +567,34 @@
                         }).addTo(map);
 
                         if (panelData.data.points) {
-                            L.heatLayer(panelData.data.points, {
-                                radius: panelData.data.radius || 25, 
-                                blur: panelData.data.blur || 15, 
+                            const heatData = panelData.data.points.map(p => {
+                                if (Array.isArray(p)) return p;
+                                return [p.lat, p.lng, p.weight || p.competitor_spike || 1.0];
+                            });
+                            
+                            L.heatLayer(heatData, {
+                                radius: panelData.data.radius || 20, 
+                                blur: panelData.data.blur || 5,
+                                max: panelData.data.max || 0.6,
                                 maxZoom: panelData.data.maxZoom || 17
                             }).addTo(map);
+
+                            panelData.data.points.forEach(p => {
+                                if (!Array.isArray(p) && (p.tooltip || p.physician_name) && p.lat && p.lng) {
+                                    const tooltipHtml = p.physician_name && p.spike_metric
+                                        ? `<div style="font-family: Inter, sans-serif; font-size: 12px; text-align: center;"><b>${p.physician_name}</b><br/><span style="color: #555; font-size: 11px;">${p.spike_metric}</span></div>`
+                                        : `<div style="font-family: Inter, sans-serif; font-size: 12px; text-align: center;"><b>${p.tooltip}</b></div>`;
+                                        
+                                    L.circleMarker([p.lat, p.lng], {
+                                        radius: 12, fillOpacity: 0, stroke: false, interactive: true
+                                    }).bindTooltip(tooltipHtml, {
+                                        permanent: false, direction: 'top'
+                                    }).addTo(map);
+                                }
+                            });
                         }
+                        */
+                        
                     }, 50);
 
                 } else if (panelData.type === 'image') {
@@ -458,7 +621,7 @@
                         </div>`).join('');
                     
                     panel.innerHTML += `
-                        <div style="display: flex; gap: 20px; height: ${isStandalone?'calc(100vh - 90px)':'350px'};">
+                        <div style="display: flex; gap: 20px; height: ${isStandalone?'calc(100vh - 90px)':'500px'};">
                             <div style="flex: 1; min-width: 200px; padding: 16px; background: ${isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'}; border-radius: 8px; overflow-y: auto; border: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};">
                                 <h4 style="margin-top: 0; margin-bottom: 16px; font-size: 0.9rem; letter-spacing: 0.05em; text-transform: uppercase;">Variables</h4>
                                 ${controlsHTML}
@@ -473,7 +636,16 @@
                         const ctx = document.getElementById(canvasId).getContext('2d');
                         Chart.defaults.color = textColor;
                         Chart.defaults.borderColor = gridColor;
-                        const baseConfig = panelData.data.chartConfig;
+                        let baseConfig = panelData.data.chartConfig || {};
+                        baseConfig.options = baseConfig.options || {};
+                        baseConfig.options.plugins = baseConfig.options.plugins || {};
+                        baseConfig.options.plugins.legend = { display: false };
+                        baseConfig.options.scales = baseConfig.options.scales || {};
+                        baseConfig.options.scales.y = baseConfig.options.scales.y || {};
+                        baseConfig.options.scales.y.max = 120;
+                        baseConfig.options.scales.y.suggestedMax = 120;
+                        baseConfig.options.responsive = true;
+                        baseConfig.options.maintainAspectRatio = false;
                         const simChart = new Chart(ctx, baseConfig);
                         window[`updateSimulator_${canvasId}`] = () => {
                             const params = (panelData.data.controls || []).map((c, i) => parseFloat(document.getElementById(`param_${canvasId}_${i}`).value));
@@ -505,6 +677,99 @@
                                 ${panelData.data.htmlContent || '<p style="color: grey; font-style: italic;">No widget content provided.</p>'}
                             </div>
                         </div>`;
+                    mainGrid.appendChild(panel);
+
+                } else if (panelData.type === 'crm-action-plan') {
+                    const existingHeader = panel.querySelector('.panel-header');
+                    if (existingHeader) existingHeader.remove();
+                    
+                    const primaryColor = isDark ? '#38bdf8' : '#2563eb';
+                    const logoUrl = isDark ? 'https://crm-mock-app-g2u64mk5wq-uc.a.run.app/logos/light-logo.png' : 'https://crm-mock-app-g2u64mk5wq-uc.a.run.app/logos/dark-logo.png';
+                    const inputBg = isDark ? '#334155' : '#ffffff';
+                    const physicianName = panelData.data.physician_name || "Dr. Aris Thorne";
+                    const numSteps = (panelData.data.steps || []).length;
+
+                    let jsCode = `
+                        event.preventDefault();
+                        const formData = new FormData(this);
+                        const rawEntries = Object.fromEntries(formData);
+                        const steps = [];
+                        for(let i=0; i<${numSteps}; i++) {
+                            steps.push({
+                                step_order: i+1,
+                                title: rawEntries['title_'+i],
+                                activity_type: rawEntries['activity_type_'+i],
+                                scheduled_date: rawEntries['scheduled_date_'+i] || new Date().toISOString().split('T')[0],
+                                description: rawEntries['description_'+i],
+                                status: 'Queued'
+                            });
+                        }
+                        const payloadData = {
+                            account: { physician_name: '${physicianName.replace(/'/g, "\\'")}', crm_id: 'V-GENERATED' },
+                            action_type: 'COMMIT_WIN_BACK_PLAN',
+                            timestamp: new Date().toISOString(),
+                            journey_steps: steps
+                        };
+                        console.log('CRM Plan Submitted:', payloadData);
+                        
+                        fetch('https://crm-mock-app-g2u64mk5wq-uc.a.run.app/api/interactions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payloadData)
+                        }).then(r => console.log('Direct CRM Post result:', r.status)).catch(e => console.error(e));
+                        
+                        const btn = this.querySelector('.btn-submit');
+                        btn.innerText = 'Syncing to CRM...';
+                        btn.style.background = 'var(--success)';
+                        setTimeout(() => { btn.innerText = 'Submitted'; }, 1500);
+                    `.replace(/\n/g, "");
+
+                    let stepsHtml = '';
+                    (panelData.data.steps || []).forEach((step, i) => {
+                        stepsHtml += `
+                            <div style="background: ${isDark ? '#1e293b' : '#f8fafc'}; border: 1px solid ${gridColor}; border-radius: 8px; padding: 16px; margin-bottom: 16px; position: relative;">
+                                <div style="position: absolute; top: -10px; left: 16px; background: ${primaryColor}; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">
+                                    Step ${step.step_order || (i + 1)}
+                                </div>
+                                <div class="form-group" style="margin-top: 8px;">
+                                    <label class="form-label">Title</label>
+                                    <input class="form-input" style="background: ${inputBg};" name="title_${i}" value="${(step.title || '').replace(/"/g, '&quot;')}">
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Activity Type</label>
+                                        <input class="form-input" style="background: ${inputBg};" name="activity_type_${i}" value="${(step.activity_type || '').replace(/"/g, '&quot;')}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Scheduled Date</label>
+                                        <input class="form-input" style="background: ${inputBg};" type="date" name="scheduled_date_${i}" value="${step.scheduled_date || ''}">
+                                    </div>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label class="form-label">Clinical / RAG Description</label>
+                                    <textarea class="form-input" style="background: ${inputBg};" name="description_${i}" rows="3">${(step.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    panel.style.padding = '0';
+                    panel.style.overflow = 'hidden';
+                    panel.innerHTML += `
+                        <div style="display: flex; flex-direction: column; height: ${isStandalone ? 'calc(100vh - 20px)' : '100%'};">
+                            <div style="padding: 16px 20px; border-bottom: 1px solid ${gridColor}; display: flex; justify-content: space-between; align-items: center; background: #0f172a; border-radius: 12px 12px 0 0;">
+                                <img src="https://crm-mock-app-g2u64mk5wq-uc.a.run.app/logos/light-logo.png" alt="CRM Logo" style="height: 24px;">
+                            </div>
+                            <div style="flex: 1; overflow-y: auto; padding: 20px; background: ${isDark ? '#0f172a' : '#ffffff'}; border-radius: 0 0 12px 12px;">
+                                <form onsubmit="${jsCode}">
+                                    ${stepsHtml}
+                                    <div style="text-align: right; margin-top: 16px;">
+                                        <button type="submit" class="btn-submit" style="background: ${primaryColor}; padding: 12px 32px; font-size: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">Submit to CRM</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    `;
                     mainGrid.appendChild(panel);
                 }
             });

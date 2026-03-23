@@ -40,7 +40,22 @@ To run A2UI agents on Argolis:
 -   `backend/templates/`: Contains modular HTML framing injection points.
     -   `dashboard.html`: Generic KPIs + visually rich Analysis Charts.
     -   `inventory.html`: Grid layout for Supply Chain/Tracking view structures.
-    -   `map.html`: Interactive Leaflet Map placeholders.
+
+***
+
+## 🗺️ Google Maps Integration (Heatmaps)
+
+The `map-heatmap` widget has been radically upgraded from open-source Leaflet to the enterprise **Google Maps JS API** utilizing the `visualization` library. 
+
+To activate this feature in your custom agent:
+1. Enable the **Maps JavaScript API** inside your Google Cloud Console.
+2. Generate an API Key restricted to HTTP referrers.
+3. Open `backend/templates/dashboard.html` and locate the hardcoded script tag on Line 9:
+   ```html
+   <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY_HERE&libraries=visualization"></script>
+   ```
+4. Replace `YOUR_GOOGLE_MAPS_API_KEY_HERE` with your active token.
+*(Note: A Leaflet fallback remains commented-out in the HTML header and Javascript block for fully-offline rendering environments).*
 -   `backend/agent_executor.py`: Orchestrated layout handler resolving template bridging overlays.
 -   `backend/prompt_builder.py`: Instructions advising the agent on which template framing structure is optimal to avoid syntax crash dependencies.
 
