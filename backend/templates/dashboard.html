@@ -653,6 +653,18 @@
                                 try {
                                    const updateFn = new Function('chart', 'params', panelData.data.onUpdateBody);
                                    updateFn(simChart, params);
+                                   
+                                   // Force solid, unmistakable colors for the simulation bars (Risk vs Attainment) 
+                                   // to prevent Chart.js defaults or LLM low-alpha generations from washing them out.
+                                   if (simChart.data.datasets && simChart.data.datasets.length > 0) {
+                                       simChart.data.datasets[0].backgroundColor = [
+                                           'rgba(239, 68, 68, 0.85)', // Red for Risk
+                                           'rgba(37, 99, 235, 0.85)'  // Blue for Attainment
+                                       ];
+                                       simChart.data.datasets[0].borderColor = ['rgba(239, 68, 68, 1)', 'rgba(37, 99, 235, 1)'];
+                                       simChart.data.datasets[0].borderWidth = 1;
+                                   }
+                                   
                                    simChart.update();
                                 } catch(e) { console.error("Simulator logic error:", e); }
                             }
