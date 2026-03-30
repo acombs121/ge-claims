@@ -80,7 +80,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
               elif item_type == 'video':
                   frame_height = 350
               elif item_type in ['d3-network', 'chart', 'map-heatmap', 'table']:
-                  frame_height = 320
+                  frame_height = 450
               else:
                   frame_height = 400
 
@@ -102,7 +102,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
               {
                 "id": "frame-container",
                 "component": {
-                  "WebFrame": {
+                  "WebFrameSrcdoc": {
                     "htmlContent": { "literalString": html_injected },
                     "height": frame_height
                   }
@@ -136,17 +136,44 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
 
     try:
         if context.message and hasattr(context.message, 'parts'):
+            logger.warning(f"A2UI-ROOT CONTEXT DEBUG | dir(context): {dir(context)}")
+            if hasattr(context, '__dict__'):
+                logger.warning(f"A2UI-ROOT CONTEXT DEBUG | vars(context): {str(vars(context))[:1000]}")
+            
+            import base64
             for i, part in enumerate(context.message.parts):
-                if hasattr(part.root, 'file') and hasattr(part.root.file, 'data') and part.root.file.data:
-                    logger.info("A2UI-MEDIA-INTERCEPT | Safely extracted native media blob across execution boundary.")
-                    try:
-                        with open("/tmp/a2ui_latest_vision_bytes.bin", "wb") as f:
-                            f.write(part.root.file.data)
-                    except Exception as e:
-                        logger.error(f"A2UI-MEDIA-INTERCEPT | Error caching media binary: {e}")
+                logger.warning(f"A2UI-MEDIA SCHEMA DEBUG | part obj: {part}")
+                logger.warning(f"A2UI-MEDIA SCHEMA DEBUG | dir(part): {dir(part)}")
+                try:
+                    raw_b64 = None
+                    if hasattr(part, 'root') and hasattr(part.root, 'file') and hasattr(part.root.file, 'bytes'):
+                        raw_b64 = part.root.file.bytes
+                    elif hasattr(part, 'file') and hasattr(part.file, 'bytes'):
+                        raw_b64 = part.file.bytes
+                        
+                    if raw_b64:
+                        logger.warning(f"A2UI-MEDIA-INTERCEPT | Safely extracted native base64 footprint structurally across boundary.")
+                        
+                        try:
+                            from google.cloud import storage
+                            storage_client = storage.Client(project="sandbox-426014")
+                            bucket_name = "sandbox-426014-a2ui-media-cache"
+                            bucket = storage_client.bucket(bucket_name)
+                            
+                            blob = bucket.blob("a2ui_latest_vision_bytes.bin")
+                            
+                            # Upload to memory-safe, globally accessible GCS storage
+                            import base64
+                            blob.upload_from_string(base64.b64decode(raw_b64), content_type="application/octet-stream")
+                            logger.warning(f"A2UI-MEDIA-INTERCEPT | Safely pushed binary payload to globally available GCS uri: gs://{bucket_name}/a2ui_latest_vision_bytes.bin")
+                        except Exception as storage_err:
+                            logger.error(f"A2UI-MEDIA-INTERCEPT | Critical failure caching media to GCS: {storage_err}")
+                            
+                except Exception as e:
+                    logger.error(f"A2UI-MEDIA-INTERCEPT | Error caching media binary: {e}")
     except Exception as e:
-        logger.error(f"A2UI-MEDIA-INTERCEPT | Error mapping parts: {e}")
-
+        logger.error(f"A2UI-MEDIA-INTERCEPT | Error mapping parts: {e}") 
+        
     updater = tasks.TaskUpdater(event_queue, task.id, task.context_id)
     session_id = task.context_id
 

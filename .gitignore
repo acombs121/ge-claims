@@ -1,32 +1,21 @@
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Environment configurations
-.ge_agent_config/
-
-# Python caching
+# Environment / Cache
 __pycache__/
-*.py[cod]
-*$py.class
-.pytest_cache/
-.coverage
+*.pyc
+venv/
+my_local_venv/
+.venv/
+.env
 
-# IDEs
-.idea/
+# Cloud Run / Deployment
+.gcloudignore
+Dockerfile.local
+
+# Testing / Local Residue
+tests/
+test_erp_push.sh
+*.log
+
+# IDE / System
 .vscode/
-*.swp
-*.swo
-
-# MacOS
+.idea/
 .DS_Store
-
-# Agent execution history / artifacts
-*.db
-logs/
-.a2a_history/

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- <meta http-equiv='Content-Security-Policy' content="connect-src 'none'"> -->
     <title>Analytics Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -677,18 +678,26 @@
                     const wTitle = panelData.data.appName || '3P Application';
                     const iconUrl = panelData.data.appIcon || 'https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/apps/default/24px.svg';
                     const primaryColor = panelData.data.themeColor || '#1a73e8';
-                    panel.style.padding = '0'; // Custom padding for widget layout
+                    if (!panelData.data.hideHeader) {
+                        panel.style.padding = '0'; // Custom padding for widget layout
+                    }
                     
-                    panel.innerHTML += `
-                        <div style="display: flex; flex-direction: column; height: ${isStandalone?'calc(100vh - 50px)':'100%'}; overflow: hidden; border-radius: inherit;">
-                            <div style="background: ${primaryColor}; padding: 12px 16px; color: #fff; display: flex; align-items: center; gap: 10px;">
-                                <img src="${iconUrl}" style="width:24px; height:24px; filter: brightness(0) invert(1);" alt="${wTitle}">
-                                <span style="font-weight: 600; font-size: 1rem; letter-spacing: 0.3px;">${wTitle}</span>
-                            </div>
-                            <div style="flex: 1; padding: 20px; overflow-y: auto; background: ${isDark ? '#0f172a' : '#fff'};">
+                    if (panelData.data.hideHeader) {
+                        panel.innerHTML += `<div style="padding: 5px 0;">
                                 ${panelData.data.htmlContent || '<p style="color: grey; font-style: italic;">No widget content provided.</p>'}
-                            </div>
-                        </div>`;
+                            </div>`;
+                    } else {
+                        panel.innerHTML += `
+                            <div style="display: flex; flex-direction: column; height: ${isStandalone?'calc(100vh - 50px)':'100%'}; overflow: hidden; border-radius: inherit;">
+                                <div style="display: flex; background: ${primaryColor}; padding: 12px 16px; color: #fff; align-items: center; gap: 10px;">
+                                    <img src="${iconUrl}" style="width:24px; height:24px; filter: brightness(0) invert(1);" alt="${wTitle}">
+                                    <span style="font-weight: 600; font-size: 1rem; letter-spacing: 0.3px;">${wTitle}</span>
+                                </div>
+                                <div style="flex: 1; padding: 20px; overflow-y: auto; background: ${isDark ? '#0f172a' : '#fff'};">
+                                    ${panelData.data.htmlContent || '<p style="color: grey; font-style: italic;">No widget content provided.</p>'}
+                                </div>
+                            </div>`;
+                    }
                     mainGrid.appendChild(panel);
 
                 } else if (panelData.type === 'crm-action-plan') {

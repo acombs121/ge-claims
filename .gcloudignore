@@ -1,24 +1,15 @@
-# If you would like to upload your .git directory, .gitignore file or files
-# from your .gitignore file, remove the corresponding line
-# below:
+# Same ignore pattern as git
 .git
 .gitignore
-
-# Environments
-.env
-.venv
-env/
+my_local_venv/
 venv/
-
-# Ignore pycache
+.venv/
+backend/tests/
+backend/test_erp_push.sh
 __pycache__/
-*.py[cod]
+*.pyc
 
-# IDE
-.vscode
-.idea
-
-# Local data / DBs
-*.db
-logs/
-.a2a_history/
+# Local Config
+.env
+.vscode/
+.DS_Store

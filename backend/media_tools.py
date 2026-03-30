@@ -18,7 +18,7 @@ def describe_storage_assets(tool_context: ToolContext = None) -> dict:
     }
 
 async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None) -> str:
-    """Generates an image via Gemini 3.1 Flash Image Preview based on the provided text prompt. If the user uploaded images, they are natively injected into the generation payload automatically. Returns a Base64 string for direct CustomView rendering."""
+    """Generates a synthetic image based on the provided text prompt. If the user uploaded images, they are natively injected into the generation payload automatically. Returns a Base64 string for direct CustomView rendering."""
     if not genai:
         return "Error: google-genai SDK is not installed or available."
     
@@ -29,14 +29,20 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
             location="global"
         )
 
-        contents_parts = [types.Part.from_text(text=prompt)]
+        contents_parts = []
         
-        # Singleton Intercept: Retrieve the exact binary footprint cached by agent_executor over the border
-        tmp_cache_path = "/tmp/a2ui_latest_vision_bytes.bin"
-        if os.path.exists(tmp_cache_path):
-            try:
-                with open(tmp_cache_path, "rb") as f:
-                    image_bytes = f.read()
+        # Singleton Intercept: Retrieve the exact binary footprint cached by agent_executor natively from GCS
+        try:
+            from google.cloud import storage
+            storage_client = storage.Client(project="sandbox-426014")
+            bucket_name = "sandbox-426014-a2ui-media-cache"
+            bucket = storage_client.bucket(bucket_name)
+            
+            blob = bucket.blob("a2ui_latest_vision_bytes.bin")
+            
+            if blob.exists():
+                image_bytes = blob.download_as_bytes()
+            
                 if image_bytes:
                     mime_type = "image/jpeg"
                     if image_bytes.startswith(b'\x89PNG'):
@@ -44,36 +50,51 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
                     elif image_bytes.startswith(b'RIFF'):
                         mime_type = "image/webp"
                     
-                    vision_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+                    # Construct rigid URI binding to force the model into restrictive visual processing loops
+                    gcs_uri = f"gs://{bucket_name}/a2ui_latest_vision_bytes.bin"
+                    vision_part = types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type)
+                    
+                    # CRITICAL: For Gemini 3.1 Flash Image Preview multimodal composition,
+                    # the image Part MUST precede the explicit text instruction.
                     contents_parts.append(vision_part)
-                os.remove(tmp_cache_path) # Clean state for next interaction
-            except Exception as e:
-                pass # Fail silently and fallback to standard text prompt handling
+                    
+                    # Prepend a strict, agnostic system command to force visual subject cohesion 
+                    # based on the uploaded attachment, without assuming it is a logo.
+                    prompt = f"[Target Context: You have been provided with an explicit source image attachment. You MUST use this attached image exactly as it appears as the primary visual reference for your generation, conforming to the prompt. Do not hallucinate or substitute visual elements for the source content; use the actual image data provided.]\n{prompt}"
+            
+                    print(f"A2UI-IMAGE-DEBUG | Successfully loaded transient image cache via GCS struct array: {gcs_uri}")
+
+        except Exception as e:
+            print(f"A2UI-IMAGE-DEBUG | Cache extraction error or missing GCS bucket mapping: {e}")
+            pass # Fallback to standard text prompt handling
         
+        contents_parts.append(types.Part.from_text(text=prompt))
+
         if tool_context:
             try:
                 artifact_keys = await tool_context.list_artifacts()
                 for key in artifact_keys:
                     image_bytes = await tool_context.load_artifact(key)
                     if image_bytes:
-                        # Map MIME type via binary signature instead of structural string suffix
-                        mime_type = None
-                        if image_bytes.startswith(b'\xff\xd8'):
-                            mime_type = "image/jpeg"
-                        elif image_bytes.startswith(b'\x89PNG'):
+                        mime_type = "image/jpeg"
+                        if image_bytes.startswith(b'\x89PNG'):
                             mime_type = "image/png"
                         elif image_bytes.startswith(b'RIFF'):
                             mime_type = "image/webp"
-
-                        if mime_type:
-                            vision_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
-                            contents_parts.append(vision_part)
+                        
+                        vision_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+                        contents_parts.append(vision_part)
+                        print(f"A2UI-IMAGE-DEBUG | Successfully instantiated GenAI Part from natively hosted UI ToolContext artifact: {key}")
             except Exception as e:
+                print(f"A2UI-IMAGE-DEBUG | WARNING: Native ToolContext load failure: {e}")
                 pass
-        
-        # print boundary logic natively to Cloud Run logging
-        print(f"A2UI-IMAGE-DEBUG | Executing Vertex Payload. Text: '{prompt}'. Encoded Vision Parts: {len(contents_parts)-1}")
 
+        # print boundary logic natively to Cloud Run logging
+        debug_types = [str(type(p)) for p in contents_parts]
+        print(f"A2UI-IMAGE-DEBUG | Executing Vertex Payload. Text: '{prompt}'. Encoded Vision Parts: {len(contents_parts)-1}")
+        print(f"A2UI-IMAGE-DEBUG | Structured Polymorphic Array Blueprint: {debug_types}")
+
+        # Execute wrapped strictly inside role Context bypassing standard text fallback
         contents = [types.Content(role="user", parts=contents_parts)]
 
         generate_content_config = types.GenerateContentConfig(
