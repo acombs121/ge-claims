@@ -119,21 +119,21 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
             if hasattr(candidate, 'content') and candidate.content and candidate.content.parts:
                 for part in candidate.content.parts:
                     import uuid
-                    os.makedirs('/tmp/a2ui_media', exist_ok=True)
+                    from google.cloud import storage
+                    storage_client = storage.Client(project="sandbox-426014")
+                    bucket = storage_client.bucket("sandbox-426014-a2ui-media-cache")
                     media_id = str(uuid.uuid4())
                     agent_root = os.environ.get("AGENT_URL", "")
 
                     if hasattr(part, 'inline_data') and part.inline_data:
                         ext = part.inline_data.mime_type.split('/')[-1] if '/' in part.inline_data.mime_type else 'png'
-                        filepath = f"/tmp/a2ui_media/{media_id}.{ext}"
-                        with open(filepath, "wb") as f:
-                            f.write(part.inline_data.data)
+                        blob = bucket.blob(f"generated_ads/{media_id}.{ext}")
+                        blob.upload_from_string(part.inline_data.data, content_type=part.inline_data.mime_type)
                         return f"{agent_root}/media/{media_id}.{ext}"
 
                     elif hasattr(part, 'image') and part.image:
-                        filepath = f"/tmp/a2ui_media/{media_id}.jpeg"
-                        with open(filepath, "wb") as f:
-                            f.write(part.image.image_bytes)
+                        blob = bucket.blob(f"generated_ads/{media_id}.jpeg")
+                        blob.upload_from_string(part.image.image_bytes, content_type="image/jpeg")
                         return f"{agent_root}/media/{media_id}.jpeg"
 
     except Exception as e:
