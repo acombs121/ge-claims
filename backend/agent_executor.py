@@ -186,7 +186,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
       )
 
     current_query_text = query
-    max_retries = 1
+    max_retries = 3
     attempt = 0
 
     await updater.start_work()
@@ -205,7 +205,12 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
               final_response_content = "\n".join([p.text for p in event.content.parts if p.text])
 
       except Exception as e:
-        await updater.failed(message=utils.new_agent_text_message(f"Task failed: {str(e)}"))
+        if attempt <= max_retries:
+            logger.warning(f"A2UI-EXC | Caught inference exception: {e}. Retrying {attempt}/{max_retries}...")
+            import asyncio
+            await asyncio.sleep(2 ** attempt)
+            continue
+        await updater.failed(message=utils.new_agent_text_message(f"Task failed after {max_retries} retries: {str(e)}"))
         return
 
       if final_response_content is None:

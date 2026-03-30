@@ -275,7 +275,7 @@
                         type: panelData.data.type || 'bar',
                         data: {
                             labels: panelData.data.labels,
-                            datasets: [{
+                            datasets: panelData.data.datasets || [{
                                 label: panelData.data.label || 'Metric',
                                 data: panelData.data.data,
                                 backgroundColor: 'rgba(37, 99, 235, 0.8)',
