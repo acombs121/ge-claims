@@ -29,6 +29,56 @@ To guarantee 100% reliable UI and data rendering across exact demo scripts and n
 *   **Tier 1 (Fast-Path Interception)**: When a user query matches a `trigger_queries` substring exactly (ignoring punctuation), the server instantly executes the mapped tool in Python and emits the UI card directly. Zero LLM latency.
 *   **Tier 2 (In-Memory Data Capture on LLM Fallback)**: When a query misses manifest triggers, the turn passes to the LLM for semantic tool selection. To eliminate JSON data truncation over chat streams, all registered Python tools are dynamically wrapped upon initialization. Whenever any tool executes in Python during an LLM turn, the wrapper captures the exact returned data dictionary directly in backend server memory (`self._last_tool_data`). During payload packaging, the server inspects the active tool against the manifest and passes the captured memory dictionary directly into the UI mapper (`native` or `iframe`), guaranteeing zero token overhead and flawless UI data hydration every single time.
 
+## 2.5 Declarative UI Philosophy & Cascading Decision Tree
+
+### The Declarative Philosophy
+The fundamental philosophy of this architecture is that **backend execution logic must remain completely decoupled from presentation formatting**. Python server code and LLM agent instructions should focus strictly on business data fetching and semantic reasoning. By declaring UI strategies in a standalone manifest (`demo_manifest.json`) and component mappers, we prevent backend code from turning into fragile HTML/JSON markup spaghetti, allowing seamless multi-tenant and industry cloning.
+
+### The Cascading Decision Tree
+When a user query arrives, the execution engine processes it through a strict cascading decision tree:
+
+```mermaid
+graph TD
+    A[User Query] --> B{Matches Manifest Trigger?}
+    B -- Yes (Tier 1) --> C[Fast-Path Interception: Run Python Tool & Render Declared UI]
+    B -- No (Tier 2) --> D[Intelligent LLM Fallback Turn]
+    D --> E[LLM Semantically Selects & Executes Tool]
+    E --> F[Tool Wrapper Captures Python Data into Memory]
+    F --> G{Is Executed Tool in Manifest?}
+    G -- Yes (Manifest Precedence) --> H[Pass Captured Memory Data to Mapped UI Strategy]
+    G -- No (Dynamic Fallback) --> I{Does Output Require UI?}
+    I -- Yes --> J{Select UI Component Type}
+    I -- No --> K[Render Standard Conversational Text]
+    J --> L[Custom Components: Dashboard, Map, ProductSelection]
+    J --> M[Standard Components: Native Cards, Tables, Lists]
+```
+
+### UI Component Selection & Formatting Guidance
+When designing or adapting mappers and templates for new industry clones, adhere to the following decision criteria:
+
+#### 1. When to Use Custom Components
+*   **`ProductSelection`**: Use exclusively for interactive, editable tabular workflows requiring picklist selections, numerical pricing inputs, and action buttons (e.g., license configuration, plan enrollment).
+*   **`DataGrid`**: Use for high-density, read-only tabular datasets where column sorting, filtering, and pagination are essential.
+*   **`WebFrameSrcdoc` (Dashboard / Custom HTML)**: Use for multi-metric executive views combining charts, KPI grids, or advanced visual simulations. It sandboxes custom HTML/JS and enforces strict CSP headers (`connect-src 'none'`).
+*   **`WebFrameUrl`**: Use when embedding an external allowlisted web page directly (e.g., standard Google Maps embed, public document viewer) where cross-origin JavaScript communication is not required.
+
+#### 2. When to Use Standard Native Components
+*   **`Card`, `Column`, `Row`, `Text`, `Icon`, `Divider`, `List`**: Use for low-overhead, lightning-fast Native A2UI widgets that blend perfectly into the Gemini Enterprise chat canvas.
+*   **Styling & Layout Best Practices**:
+    *   *Contact / Profile Card*: Use a top `Row` with an `avatar` or `person` icon alongside the individual's name formatted in `h2`. Follow with a `Divider` and key-value `Row` items formatted in `body` text.
+    *   *Account / Financial Summary*: Use a `Card` structuring KPI metric boxes in `Column` containers using large typography (`h1` or `h2` for numerical values) paired with muted `caption` labels underneath.
+
+#### 3. Sequential Multi-Component Rendering
+The declarative architecture supports emitting an array of multiple sequential A2UI messages within a single execution turn. For interactive confirmation workflows, mapper functions can output a sequential list:
+```python
+[
+    cl.begin_rendering(surface_id="canvas-surface", root="card-id"),
+    cl.surface_update(surface_id="canvas-surface", components=card_components),
+    cl.surface_update(surface_id="canvas-surface", components=confirmation_button_components)
+]
+```
+This allows complex multi-step visual components (e.g., a summary card followed immediately by an enrollment confirmation button) to render elegantly one after the other inside the same chat canvas slot.
+
 ## 3. Manifest Flexibility & Capabilities
 
 The `demo_manifest.json` is highly flexible and supports the following options for each step:
