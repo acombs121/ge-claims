@@ -26,13 +26,13 @@ The `demo_manifest.json` file acts as the orchestration layer. It maps specific 
 
 ### 4. Dual-Tier Execution Engine & In-Memory Data Capture
 To guarantee 100% reliable UI and data rendering across exact demo scripts and natural user variations, `agent_executor.py` operates a dual-tier architecture:
-*   **Tier 1 (Fast-Path Interception)**: When a user query matches a `trigger_queries` substring exactly (ignoring punctuation), the server instantly executes the mapped tool in Python and emits the UI card directly. Zero LLM latency.
-*   **Tier 2 (In-Memory Data Capture on LLM Fallback)**: When a query misses manifest triggers, the turn passes to the LLM for semantic tool selection. To eliminate JSON data truncation over chat streams, all registered Python tools are dynamically wrapped upon initialization. Whenever any tool executes in Python during an LLM turn, the wrapper captures the exact returned data dictionary directly in backend server memory (`self._last_tool_data`). During payload packaging, the server inspects the active tool against the manifest and passes the captured memory dictionary directly into the UI mapper (`native` or `iframe`), guaranteeing zero token overhead and flawless UI data hydration every single time.
+*   **Tier 1 (Fast-Path Interception)**: When a user query matches a `trigger_queries` substring exactly (ignoring punctuation), the server instantly executes the mapped ADK tool synchronously and emits the UI card directly. Zero LLM latency.
+*   **Tier 2 (In-Memory Data Capture on LLM Fallback)**: When a query misses manifest triggers, the turn passes to the LLM for semantic tool selection. To eliminate JSON data truncation over chat streams, all registered ADK tools are dynamically wrapped upon initialization. Whenever any tool executes during an LLM turn, the wrapper captures the exact returned data dictionary directly in backend server memory (`self._last_tool_data`). During payload packaging, the server inspects the active tool against the manifest and passes the captured memory dictionary directly into the UI mapper (`native` or `iframe`), guaranteeing zero token overhead and flawless UI data hydration every single time.
 
 ## 2.5 Declarative UI Philosophy & Cascading Decision Tree
 
 ### The Declarative Philosophy
-The fundamental philosophy of this architecture is that **backend execution logic must remain completely decoupled from presentation formatting**. Python server code and LLM agent instructions should focus strictly on business data fetching and semantic reasoning. By declaring UI strategies in a standalone manifest (`demo_manifest.json`) and component mappers, we prevent backend code from turning into fragile HTML/JSON markup spaghetti, allowing seamless multi-tenant and industry cloning.
+The fundamental philosophy of this architecture is that **backend execution logic must remain completely decoupled from presentation formatting**. Backend server code and LLM agent instructions should focus strictly on business data fetching and semantic reasoning. By declaring UI strategies in a standalone manifest (`demo_manifest.json`) and component mappers, we prevent backend code from turning into fragile HTML/JSON markup spaghetti, allowing seamless multi-tenant and industry cloning.
 
 ### The Cascading Decision Tree
 When a user query arrives, the execution engine processes it through a strict cascading decision tree:
@@ -40,10 +40,10 @@ When a user query arrives, the execution engine processes it through a strict ca
 ```mermaid
 graph TD
     A[User Query] --> B{Matches Manifest Trigger?}
-    B -- Yes (Tier 1) --> C[Fast-Path Interception: Run Python Tool & Render Declared UI]
+    B -- Yes (Tier 1) --> C[Fast-Path Interception: Run ADK Tool & Render Declared UI]
     B -- No (Tier 2) --> D[Intelligent LLM Fallback Turn]
-    D --> E[LLM Semantically Selects & Executes Tool]
-    E --> F[Tool Wrapper Captures Python Data into Memory]
+    D --> E[LLM Semantically Selects & Executes ADK Tool]
+    E --> F[Tool Wrapper Captures Data into Memory]
     F --> G{Is Executed Tool in Manifest?}
     G -- Yes (Manifest Precedence) --> H[Pass Captured Memory Data to Mapped UI Strategy]
     G -- No (Dynamic Fallback) --> I{Does Output Require UI?}
