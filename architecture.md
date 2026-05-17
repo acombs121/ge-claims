@@ -207,25 +207,31 @@ When returning pure data from tools to be rendered in `universal_dashboard.html`
 
 ## 5. Multi-Step Cloning Protocol
 
-When cloning an agent for a new customer or use case, avoid doing it in a single turn. Follow this structured protocol:
+When cloning this repository for a new customer, industry, or use case (e.g., clinical trials, retail inventory, wealth management), avoid making haphazard single-turn changes. Follow this rigorous 5-step cloning protocol:
 
 ### Step 1: Narrative & Schema Design (Alignment Phase)
-1.  Define the new target customer, industry, and persona.
-2.  Map out the 4-5 steps of the demo flow (Queries -> Expected UI).
-3.  Define the data schema needed for each step.
-4.  *Stop and verify alignment.*
+1.  Define the target customer, industry persona, and key pain points.
+2.  Map out exactly 4-5 steps for the core demo flow in a spreadsheet or document (User Query -> Action Tool -> Target Output Mode: `native`, `iframe`, `url`, `text`).
+3.  Define the exact JSON data schemas required for each tool's business response.
+4.  *CRITICAL: Stop and verify alignment with stakeholders before writing any code.*
 
-### Step 2: Synthetic Data Generation
-1.  Generate the mock JSON data files in the `backend/data/` directory based on the approved schema.
-2.  Ensure data is realistic and fits the narrative.
+### Step 2: Synthetic Data & Core Domain Tools
+1.  Create mock data JSON files inside `backend/data/` (e.g., `wealth_portfolio.json`) matching the agreed schema.
+2.  Create a dedicated domain data Python module (e.g., `wealth_data.py`) containing pure data tools that read/write to those JSON files. Ensure all tools return clean Python dictionaries (zero HTML/UI formatting).
+3.  Register these new tool functions in `agent.py` and update `SYSTEM_INSTRUCTION` to reflect the new domain persona.
 
-### Step 3: Core Logic & UI Adaptation
-1.  Update `agent.py` with the new system instructions, triggers, and tools.
-2.  Adapt the tools to fetch the new data and return it via `CustomView` or standard payloads.
-3.  Update the HTML templates in `backend/templates/` if specific custom views are needed.
+### Step 3: Component Library Mappers
+1.  In `component_mappers.py`, create specialized Python mapper functions (e.g., `build_portfolio_card(data)`) that translate pure domain dictionaries into Native A2UI component lists using generator functions from `component_library.py`.
+2.  For custom dashboard layouts or interactive simulators, create or adapt HTML templates inside `backend/templates/` (e.g., `wealth_dashboard.html`).
 
-### Step 4: Meta-Files & Verification
-1.  Update `deploy.sh` with the new service name.
-2.  Update `agent_card.json` with new descriptions and metadata.
-3.  Update `README.md` to reflect the new scenario and queries.
-4.  Verify the execution flow locally before deployment.
+### Step 4: Declarative Orchestration (`demo_manifest.json`)
+1.  Completely update `demo_manifest.json` with the new demo steps.
+2.  For each step, define concise, robust keywords in `trigger_queries`, link the `action_tool`, and specify the `output_mode` (`native`, `iframe`, `url`) and target `native_mapper` or `template`.
+3.  *Note: The tool wrapper in `agent_executor.py` will automatically capture executed tool data in memory for both exact matches and LLM fallback turns.*
+
+### Step 5: Meta-Files, Branding & Verification
+1.  Stage new logos or visual assets in `backend/data/logos/` and run `python3 backend/upload_logos.py` to cache them in GCS.
+2.  Update `agent_card.json` with the new agent name, description, and sample queries.
+3.  Update `deploy.sh` with the new Cloud Run service name and required environment variables.
+4.  Update `README.md` with the new demo script.
+5.  Execute `python3 -m unittest discover tests` to verify local stability before running `./deploy.sh`.
