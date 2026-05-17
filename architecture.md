@@ -116,8 +116,17 @@ These are advanced domain-specific web components or sandboxed containers:
 *   **`VegaChart`**: Declarative animated visual charts.
 *   **`GeSduiViewer`**: Server-driven UI viewer. *(Note: In A2UI 0.8, this component is currently disabled/stubbed in the frontend code pending dynamic import support in Gemini Enterprise).*
 
-### Advanced Visual Demos (Geographic Maps)
-For complex geographic maps requiring heatmaps, pulsing CSS marker rings, and animated polyline routes, the agent uses `WebFrameSrcdoc` paired with the specialized `base_map.html` Leaflet pack. The manifest specifies `"output_mode": "iframe"` and `"template": "base_map"`, and the tool returns raw data (`heatmap_points`, `markers`, `routes`). For simple static or interactive maps without custom overlays, the agent can use `WebFrameUrl` pointing directly to Google Maps.
+### Advanced Visual Demos (Geographic Maps & Multi-Layer Overlays)
+For complex geographic visualizations, the agent pairs `WebFrameSrcdoc` with the specialized `base_map.html` Leaflet pack. This architecture decouples backend routing calculations from client-side vector rendering:
+* **Backend Google Maps SDK (`route_tools.py` / `map_services.py`)**: Computes accurate driving directions, polyline coordinates, distances, and durations via Google Maps APIs before rendering.
+* **Client-Side Leaflet Overlays (`base_map.html`)**: Dynamically hydrates multi-layer interactive maps supporting:
+  - **Density Heatmaps**: Configurable radius and blur (`L.heatLayer`) for hotspot clustering.
+  - **Clickable & Hoverable Markers**: Custom HTML tooltips (`bindTooltip`) supporting rich metadata popups.
+  - **Pulsing Marker Rings**: Pure CSS animated radar rings (`.pulse-ring`) whose scale, animation velocity, and alert colors (`#facc15` yellow, `#f97316` orange, `#ef4444` red) scale dynamically with priority or severity scores.
+  - **Animated Polyline Routes**: Dashed trajectory lines (`dashArray: '10, 10'`) illustrating supply chain or logistics paths.
+  - **Layer & API Toggles**: Built-in UI controls (`#layerToggles`) enabling users to toggle heatmaps or activate live API overlays (e.g., OpenWeatherMap raster tile layers or traffic density layers).
+
+For simple static maps or direct embeds without custom overlays, the agent can use `WebFrameUrl` pointing directly to Google Maps.
 
 ### Note on Templates
 *   `universal_dashboard.html`: The secure, branded version for common components (Table, Chart, Image).
@@ -157,17 +166,34 @@ When returning pure data from tools to be rendered in `universal_dashboard.html`
 *   **`type`**: `"image"`
 *   **`data`**: `"https://url-to-image.png"` OR `{"src": "...", "alt": "..."}`
 
-### 4. Map (Heatmap & Points)
-*   **`type`**: `"map-heatmap"`
+### 4. Map (High-Fidelity Geo-Visualization)
+When returning data from tools to be rendered in `base_map.html` or `universal_dashboard.html`, structure the JSON payload as follows to unlock full visual capabilities:
+*   **`type`**: `"map-composite"` (or `"map-heatmap"`)
 *   **`data`**:
     ```json
     {
-      "zoom": 11,
-      "centerLat": 42.3601,
-      "centerLng": -71.0589,
-      "points": [
-        {"lat": 42.36, "lng": -71.05, "weight": 1.0, "tooltip": "Info"}
-      ]
+      "zoom": 12,
+      "center": [42.3601, -71.0589],
+      "theme": "dark",
+      "config": {
+        "enableHeatmap": true,
+        "enableWeatherStub": true
+      },
+      "heatmap_points": [
+        [42.3601, -71.0589, 0.9],
+        [42.3584, -71.0597, 0.6]
+      ],
+      "markers": [
+        [42.3601, -71.0589, 0.95, "Boston Global HQ", "Active Normal"],
+        [42.3584, -71.0597, 0.45, "Distribution Hub 4", "High Volume"]
+      ],
+      "routes": {
+        "optimal_route": {
+          "coordinates": [[42.3601, -71.0589], [42.3584, -71.0597]],
+          "distance": "3.2 miles",
+          "duration": "12 mins"
+        }
+      }
     }
     ```
 
@@ -216,7 +242,7 @@ When cloning this repository for a new customer, industry, or use case (e.g., cl
 4.  *CRITICAL: Stop and verify alignment with stakeholders before writing any code.*
 
 ### Step 2: Synthetic Data & Core Domain Tools
-1.  Create mock data JSON files inside `backend/data/` (e.g., `wealth_portfolio.json`) matching the agreed schema.
+1.  Create detailed, high-fidelity mock data JSON files inside `backend/data/` (e.g., `wealth_portfolio.json`) matching the agreed schema.
 2.  Create a dedicated domain data Python module (e.g., `wealth_data.py`) containing pure data tools that read/write to those JSON files. Ensure all tools return clean Python dictionaries (zero HTML/UI formatting).
 3.  Register these new tool functions in `agent.py` and update `SYSTEM_INSTRUCTION` to reflect the new domain persona.
 
