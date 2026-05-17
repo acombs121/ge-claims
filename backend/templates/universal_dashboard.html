@@ -187,6 +187,11 @@
     <script>
         function init() {
             const data = window.INJECTED_DATA || {};
+            if (data.config && data.config.border === 'none') {
+                document.documentElement.style.setProperty('--border-color', 'transparent');
+                document.documentElement.style.setProperty('--bg-color', 'transparent');
+                document.body.style.backgroundColor = 'transparent';
+            }
             if (data.theme) { document.documentElement.setAttribute('data-theme', data.theme); }
             
             const headerEl = document.querySelector('.dashboard-header');

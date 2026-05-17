@@ -83,6 +83,8 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
           @wraps(tool_func)
           async def async_wrapper(*args, **kwargs):
               res = await tool_func(*args, **kwargs)
+              self._executed_tool_name = tool_name
+              self._executed_tool_data = res
               self._last_tool_name = tool_name
               self._last_tool_data = res
               return res
@@ -91,10 +93,13 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
           @wraps(tool_func)
           def sync_wrapper(*args, **kwargs):
               res = tool_func(*args, **kwargs)
+              self._executed_tool_name = tool_name
+              self._executed_tool_data = res
               self._last_tool_name = tool_name
               self._last_tool_data = res
               return res
           return sync_wrapper
+
 
   def _build_webframe(self, data, template_name="dashboard"):
     """Build a WebFrame component from injected data and template."""
@@ -131,17 +136,13 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
         {
           "beginRendering": {
             "surfaceId": "canvas-surface",
-            "root": "root-card"
+            "root": "frame-container"
           }
         },
         {
           "surfaceUpdate": {
             "surfaceId": "canvas-surface",
             "components": [
-              {
-                "id": "root-card",
-                "component": { "Card": { "child": "frame-container" } }
-              },
               {
                 "id": "frame-container",
                 "component": {
@@ -219,63 +220,65 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
           parts.append(types.Part(root=types.TextPart(text=text_part.strip())))
 
         processed_data = None
+        active_tool = getattr(self, '_executed_tool_name', None)
+        if active_tool == 'tool': active_tool = None
+        active_data = getattr(self, '_executed_tool_data', None)
+        
+        json_data = {}
         if json_string_cleaned:
             json_data = json.loads(json_string_cleaned)
-            processed_data = json_data
-            
-            def find_custom_view(obj):
-                if isinstance(obj, dict):
-                    if "CustomView" in obj:
-                        return obj["CustomView"]
-                    for v in obj.values():
-                        res = find_custom_view(v)
-                        if res: return res
-                elif isinstance(obj, list):
-                    for item in obj:
-                        res = find_custom_view(item)
-                        if res: return res
-                return None
-
-            active_tool = getattr(self, '_last_tool_name', None)
-            if active_tool == 'tool': active_tool = None
-            active_data = getattr(self, '_last_tool_data', None)
             if active_data is None and isinstance(json_data, dict):
                 active_data = json_data
                 if not active_tool: active_tool = json_data.get("_source_tool")
                 
-            manifest_handled = False
-            if active_tool:
-                steps = self._manifest.get("steps", [])
-                tool_cfg = next((s for s in steps if s.get("action_tool") == active_tool), None)
-                if tool_cfg:
-                    output_mode = tool_cfg.get("output_mode")
-                    if output_mode == "iframe":
-                        template = tool_cfg.get("template", "dashboard")
-                        processed_data = self._build_webframe(active_data or json_data, template)
-                        manifest_handled = True
-                    elif output_mode == "url":
-                        url_str = tool_cfg.get("url") or (isinstance(active_data, dict) and active_data.get("url")) or str(active_data)
-                        import component_library as cl
-                        processed_data = [
-                            cl.begin_rendering(surface_id="canvas-surface", root="root-url"),
-                            cl.surface_update(surface_id="canvas-surface", components=[cl.web_frame_url(element_id="root-url", url=url_str)])
-                        ]
-                        manifest_handled = True
-                    elif output_mode == "native":
-                        mapper_name = tool_cfg.get("native_mapper")
-                        import component_mappers as cm
-                        mapper_func = getattr(cm, mapper_name, None)
-                        if mapper_func:
-                            processed_data = mapper_func(active_data or json_data)
-                            manifest_handled = True
+        def find_custom_view(obj):
+            if isinstance(obj, dict):
+                if "CustomView" in obj: return obj["CustomView"]
+                for v in obj.values():
+                    res = find_custom_view(v)
+                    if res: return res
+            elif isinstance(obj, list):
+                for item in obj:
+                    res = find_custom_view(item)
+                    if res: return res
+            return None
             
-            if not manifest_handled:
-                target_view = find_custom_view(json_data)
-                if target_view:
-                    view_data = target_view.get("data", {})
-                    if "theme" in target_view:
-                        view_data["theme"] = target_view["theme"]
-                    processed_data = self._build_webframe(view_data, target_view.get("template", "dashboard"))
+        manifest_handled = False
+        if active_tool:
+            steps = self._manifest.get("steps", [])
+            tool_cfg = next((s for s in steps if s.get("action_tool") == active_tool), None)
+            if tool_cfg:
+                output_mode = tool_cfg.get("output_mode")
+                if output_mode == "iframe":
+                    template = tool_cfg.get("template", "dashboard")
+                    injected_payload = active_data or json_data
+                    if isinstance(injected_payload, dict):
+                        if "theme" in tool_cfg: injected_payload["theme"] = tool_cfg["theme"]
+                        if "config" in tool_cfg: injected_payload["config"] = tool_cfg["config"]
+                    processed_data = self._build_webframe(injected_payload, template)
+                    manifest_handled = True
+                elif output_mode == "url":
+                    url_str = tool_cfg.get("url") or (isinstance(active_data, dict) and active_data.get("url")) or str(active_data)
+                    import component_library as cl
+                    processed_data = [
+                        cl.begin_rendering(surface_id="canvas-surface", root="root-url"),
+                        cl.surface_update(surface_id="canvas-surface", components=[cl.web_frame_url(element_id="root-url", url=url_str)])
+                    ]
+                    manifest_handled = True
+                elif output_mode == "native":
+                    mapper_name = tool_cfg.get("native_mapper")
+                    import component_mappers as cm
+                    mapper_func = getattr(cm, mapper_name, None)
+                    if mapper_func:
+                        processed_data = mapper_func(active_data or json_data)
+                        manifest_handled = True
+        
+        if not manifest_handled and json_string_cleaned:
+            target_view = find_custom_view(json_data)
+            if target_view:
+                view_data = target_view.get("data", {})
+                if "theme" in target_view: view_data["theme"] = target_view["theme"]
+                processed_data = self._build_webframe(view_data, target_view.get("template", "dashboard"))
 
         # Intercepted Payload Handling (Merged)
         if cached_ui_payload:
@@ -414,6 +417,8 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
     
     self._last_tool_name = None
     self._last_tool_data = None
+    self._executed_tool_name = None
+    self._executed_tool_data = None
     
     # Intercept Action Check
     intercepted_parts = await self._handle_intercepted_action(query)
