@@ -89,6 +89,8 @@ The `demo_manifest.json` is highly flexible and supports the following options f
     *   `"iframe"`: Renders a rich custom dashboard inside a `WebFrameSrcdoc` using an HTML template.
     *   `"url"`: Renders an external allowlisted web URL directly in a `WebFrameUrl` (e.g. Google Maps embed).
     *   `"text"`: Bypasses UI generation and returns only text.
+*   **`theme`** *(Optional)*: String indicating styling mode (e.g., `"light"`, `"dark"`). If omitted, templates gracefully fall back to default styling.
+*   **`config`** *(Optional)*: A dictionary of bespoke styling or behavior parameters (e.g., `{"border": "none", "header_color": "#ef4444", "enableHeatmap": true}`). If omitted, templates default to clean, borderless bounds.
 
 ### Default Behavior
 If a user query does not match any `trigger_queries` in the manifest, the system **defaults to running the LLM agent normally**. The LLM will then decide to call tools or generate a text response based on its system instructions.
