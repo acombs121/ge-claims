@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Local testing script following A2A JSON-RPC stream specification
-# Usage: ./test_local.sh "give me the top 5 MSAs for MASH"
+# Usage: ./test_local.sh "let's plan my sales visits for the day"
 
-QUERY=${1:-"give me the top 5 MSAs for MASH"}
+QUERY=${1:-"let's plan my sales visits for the day"}
 PORT=${2:-8080}
 
 echo "Submitting query: '$QUERY' to local endpoint on port $PORT..."

@@ -7,7 +7,7 @@ fastapi
 uvicorn
 db-dtypes
 git+https://github.com/google/adk-python.git
-a2a-sdk[http-server]
+a2a-sdk[http-server]==0.3.26
 
 google-genai
 google-cloud-storage

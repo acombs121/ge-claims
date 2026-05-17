@@ -1,0 +1,85 @@
+{
+  "name": "Aon HR Agent",
+  "description": "HR agent. Handles employee benefits and wellness operations.",
+  "url": "https://aon-hr-agent-157865322412.us-central1.run.app",
+  "version": "1.0.0",
+  "protocolVersion": "0.3.0",
+  "preferredTransport": "JSONRPC",
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain",
+    "application/json"
+  ],
+  "capabilities": {
+    "streaming": true,
+    "extensions": [
+      {
+        "uri": "https://a2ui.org/a2a-extension/a2ui/v0.8",
+        "description": "Ability to render A2UI",
+        "required": false,
+        "params": {
+          "supportedCatalogIds": [
+            "https://a2ui.org/specification/v0_8/standard_catalog_definition.json"
+          ],
+          "acceptsInlineCatalogs": true
+        }
+      }
+    ]
+  },
+  "skills": [
+    {
+      "id": "hr_portal_overview",
+      "name": "HR Portal & Org Chart Access",
+      "description": "Retrieves employee profile, security context, and renders the organization hierarchy graph.",
+      "tags": [
+        "profile",
+        "org-chart",
+        "portal"
+      ],
+      "examples": [
+        "let's look at my HR portal"
+      ]
+    },
+    {
+      "id": "performance_review_synthesis",
+      "name": "Performance Review Synthesis",
+      "description": "Synthesizes performance data, calculates competency scores, and generates a radar chart.",
+      "tags": [
+        "performance",
+        "review",
+        "chart"
+      ],
+      "examples": [
+        "help me prepare for my performance review"
+      ]
+    },
+    {
+      "id": "benefits_summary",
+      "name": "Benefits & Vacation Summary",
+      "description": "Retrieves active enrollments and tracks vacation days usage.",
+      "tags": [
+        "benefits",
+        "vacation",
+        "time-off"
+      ],
+      "examples": [
+        "how many vacation days do I have left?"
+      ]
+    },
+    {
+      "id": "benefit_registration",
+      "name": "Benefit Registration Action",
+      "description": "Enrolls employees in benefits and logs audit trails to cloud systems.",
+      "tags": [
+        "enrollment",
+        "workday",
+        "audit"
+      ],
+      "examples": [
+        "Enroll me in the Commuter Benefit"
+      ]
+    }
+  ]
+}

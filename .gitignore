@@ -19,3 +19,6 @@ test_erp_push.sh
 .vscode/
 .idea/
 .DS_Store
+
+# Local Media Cache
+backend/data/media_cache/

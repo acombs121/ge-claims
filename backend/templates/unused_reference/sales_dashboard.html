@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="connect-src 'none'">
+    <title>Sales Forecast Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --accent-primary: #2563eb;
+            --accent-secondary: #10b981;
+        }
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --accent-primary: #38bdf8;
+            --accent-secondary: #34d399;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .dashboard-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0;
+        }
+        .select-input {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-color);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-card">
+        <div class="header">
+            <h2 class="title">ARR Forecast vs Travel Spend</h2>
+            <select class="select-input" id="scenarioSelect" onchange="window.updateChart()">
+                <option value="conservative">Conservative Scenario</option>
+                <option value="aggressive">Aggressive Scenario</option>
+            </select>
+        </div>
+        <div class="chart-container">
+            <canvas id="forecastChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let chart;
+        let data = {};
+
+        function init() {
+            data = window.INJECTED_DATA || {
+                conservative: {
+                    labels: ["Month 1", "Month 2", "Month 3", "Month 4", "Month 5", "Month 6"],
+                    spend: [1200, 1500, 1000, 800, 500, 500],
+                    arr: [50000, 60000, 75000, 85000, 90000, 95000]
+                },
+                aggressive: {
+                    labels: ["Month 1", "Month 2", "Month 3", "Month 4", "Month 5", "Month 6"],
+                    spend: [2500, 3000, 2000, 1500, 1000, 1000],
+                    arr: [70000, 90000, 120000, 150000, 170000, 180000]
+                }
+            };
+
+            if (data.theme) { document.documentElement.setAttribute('data-theme', data.theme); }
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const gridColor = isDark ? '#334155' : '#e2e8f0';
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Travel Spend ($)',
+                            data: [],
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            yAxisID: 'y',
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Retained ARR ($)',
+                            data: [],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            yAxisID: 'y1',
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: { display: true, text: 'Travel Spend ($)', color: textColor },
+                            grid: { color: gridColor },
+                            ticks: { color: textColor }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: { display: true, text: 'Retained ARR ($)', color: textColor },
+                            grid: { drawOnChartArea: false },
+                            ticks: { color: textColor }
+                        },
+                        x: {
+                            grid: { color: gridColor },
+                            ticks: { color: textColor }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: textColor }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y.toLocaleString();
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+
+                }
+            });
+
+            window.updateChart();
+        }
+
+        window.updateChart = function() {
+            const select = document.getElementById('scenarioSelect');
+            const scenario = select.value;
+            const scenarioData = data[scenario];
+
+            if (!scenarioData) return;
+
+            chart.data.labels = scenarioData.labels;
+            chart.data.datasets[0].data = scenarioData.spend;
+            chart.data.datasets[1].data = scenarioData.arr;
+            chart.update();
+        }
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

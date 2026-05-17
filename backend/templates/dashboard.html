@@ -265,7 +265,7 @@
                 if (panelData.type === 'chart') {
                     const canvasId = 'chartCanvas_' + (chartIndex++);
                     const chartContainer = document.createElement('div');
-                    chartContainer.style = `position: relative; height: ${isStandalone ? 'calc(100vh - 90px)' : '250px'};`;
+                    chartContainer.style = `position: relative; height: ${isStandalone ? 'calc(100vh - 90px)' : '200px'};`;
                     chartContainer.innerHTML = `<canvas id="${canvasId}"></canvas>`;
                     panel.appendChild(chartContainer);
                     mainGrid.appendChild(panel);
@@ -286,7 +286,7 @@
                         },
                         options: {
                             responsive: true,
-                            maintainAspectRatio: false,
+                            maintainAspectRatio: true,
                             plugins: { 
                                 legend: { display: false },
                                 tooltip: {
@@ -395,9 +395,13 @@
                         d3Container.appendChild(titleOverlay);
 
                         const simulation = d3.forceSimulation(nodes)
-                            .force("link", d3.forceLink(links).id(d => d.id).distance(100))
-                            .force("charge", d3.forceManyBody().strength(-300))
-                            .force("center", d3.forceCenter(width / 2, height / 2));
+                            .force("link", d3.forceLink(links).id(d => d.id).distance(150))
+                            .force("charge", d3.forceManyBody().strength(-600))
+                            .force("center", d3.forceCenter(width / 2, height / 2))
+                            .force("y", d3.forceY(d => {
+                                const level = d.level || 2;
+                                return height * (level / 4);
+                            }).strength(2));
 
                         const link = svg.append("g")
                             .selectAll("line").data(links).join("line")

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="connect-src 'none'">
+    <title>Modular Map View</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+    <style>
+        :root {
+            --bg-blur: rgba(255, 255, 255, 0.95);
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --border-color: rgba(226, 232, 240, 0.9);
+            --accent-primary: #2563eb;
+            --accent-glow: rgba(37, 99, 235, 0.3);
+        }
+        [data-theme="dark"] {
+            --bg-blur: rgba(30, 41, 59, 0.95);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-color: rgba(51, 65, 85, 0.9);
+            --accent-primary: #38bdf8;
+        }
+        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; overflow: hidden; background: #0f172a; }
+        #map { height: 100vh; width: 100vw; z-index: 1; }
+        
+        .floating-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: var(--bg-blur);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            width: 200px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            color: var(--text-primary);
+        }
+        
+        .pulse-marker {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .pulse-dot {
+            position: absolute;
+            border-radius: 50%;
+            background: #ef4444;
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+        }
+
+        .pulse-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 3px solid #ef4444;
+            animation: radarPulse 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        @keyframes radarPulse {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(3.5); opacity: 0; }
+        }
+        
+        .control-group { margin-bottom: 12px; }
+        .control-group:last-child { margin-bottom: 0; }
+        .control-label { display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px; }
+        
+        .select-input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.85rem;
+        }
+        
+        .route-info {
+            font-size: 0.85rem;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+        
+        @keyframes dashflow {
+            from { stroke-dashoffset: 40; }
+            to { stroke-dashoffset: 0; }
+        }
+        .animated-route {
+            animation: dashflow 1.5s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="floating-controls">
+        <div class="control-group">
+            <label class="control-label">Route Optimization</label>
+            <select class="select-input" id="routeSelect" onchange="window.updateRoute()">
+                <option value="shortest_distance">Shortest Distance</option>
+                <option value="account_priority">Account Priority</option>
+            </select>
+        </div>
+        <div class="control-group" id="layerToggles" style="display: none;">
+            <label class="control-label">Dynamic Layers</label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+                <input type="checkbox" id="heatToggle" onchange="window.toggleHeatmap()"> 
+                Heatmap (Demand)
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin-top: 4px;">
+                <input type="checkbox" id="weatherToggle" onchange="window.toggleWeather()"> 
+                Weather Risk (Stub)
+            </label>
+        </div>
+        <div class="route-info" id="routeInfo">
+            Distance: --<br>
+            Duration: --
+        </div>
+    </div>
+
+    <script>
+        let map;
+        let heatLayer;
+        let activeRouteLayer;
+        let data = {};
+        let config = {};
+
+        function init() {
+            data = window.INJECTED_DATA || {
+                center: [42.3601, -71.0589],
+                zoom: 12,
+                heatmap_points: [],
+                routes: {}
+            };
+            config = data.config || {};
+
+            if (data.theme) { document.documentElement.setAttribute('data-theme', data.theme); }
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView(data.center || [42.3601, -71.0589], data.zoom || 12);
+            L.control.zoom({ position: 'topleft' }).addTo(map);
+
+            const tileUrl = isDark 
+                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+            L.tileLayer(tileUrl, { attribution: '' }).addTo(map);
+
+            // Feature Flag: Layers Menu
+            if (config.enableHeatmap || config.enableWeatherStub) {
+                document.getElementById('layerToggles').style.display = 'block';
+            }
+
+            // Feature Flag: Heatmap
+            if (config.enableHeatmap && data.heatmap_points && data.heatmap_points.length > 0) {
+                const heatPoints = data.heatmap_points.map(p => [p[0], p[1], p[2] || 0.5]);
+                heatLayer = L.heatLayer(heatPoints, { radius: 25, blur: 15 });
+                document.getElementById('heatToggle').checked = true;
+                heatLayer.addTo(map);
+            }
+
+            // Render Custom Markers
+            if (data.markers) {
+                data.markers.forEach((p, index) => {
+                    const intensity = p[2] || 0.5;
+                    const name = p[3] || 'Account';
+                    const status = p[4] || 'Active';
+                    
+                    const dotSize = 12 + (intensity * 14);
+                    const ringSize = dotSize * 2.5;
+                    const animDuration = 2.5 - (intensity * 1.2);
+                    
+                    let color = '#facc15';
+                    if (intensity > 0.8) color = '#ef4444';
+                    else if (intensity > 0.4) color = '#f97316';
+                    
+                    const opacity = 0.4 + (intensity * 0.6);
+                    
+                    const iconHtml = `
+                        <div class="pulse-marker" style="width:${dotSize}px; height:${dotSize}px;">
+                            <div class="pulse-ring" style="width:${ringSize}px; height:${ringSize}px; animation-duration:${animDuration}s; border-color:${color}; opacity:${opacity};"></div>
+                            <div class="pulse-dot" style="width:${dotSize}px; height:${dotSize}px; background:${color}; opacity:${opacity}; box-shadow: 0 0 8px ${color};"></div>
+                        </div>
+                    `;
+                    
+                    const customIcon = L.divIcon({
+                        html: iconHtml,
+                        className: '',
+                        iconSize: [dotSize, dotSize],
+                        iconAnchor: [dotSize/2, dotSize/2]
+                    });
+                    
+                    L.marker([p[0], p[1]], { icon: customIcon })
+                    .bindTooltip(
+                        `<b>${name}</b><br><span style="font-size:0.8em;">Priority #${index + 1} | Status: ${status}</span>`, 
+                        { className: 'custom-tooltip', direction: 'top', offset: [0, -dotSize/2] }
+                    ).addTo(map);
+                });
+            }
+
+            // Center camera
+            if (data.heatmap_points && data.heatmap_points.length > 0) {
+                const bounds = L.latLngBounds(data.heatmap_points.map(p => [p[0], p[1]]));
+                map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+            }
+
+            // Initial Route
+            window.updateRoute();
+        }
+
+        window.toggleHeatmap = function() {
+            const checked = document.getElementById('heatToggle').checked;
+            if (checked && heatLayer) {
+                heatLayer.addTo(map);
+            } else if (heatLayer) {
+                map.removeLayer(heatLayer);
+            }
+        }
+
+        window.toggleWeather = function() {
+            const checked = document.getElementById('weatherToggle').checked;
+            alert(checked ? "Weather API overlay activated (Stub)" : "Weather overlay deactivated");
+        }
+
+        window.updateRoute = function() {
+            const select = document.getElementById('routeSelect');
+            const routeType = select.value;
+            const routeData = data.routes ? data.routes[routeType] : null;
+
+            if (!routeData) return;
+
+            if (activeRouteLayer) {
+                map.removeLayer(activeRouteLayer);
+            }
+
+            activeRouteLayer = L.polyline(routeData.coordinates, {
+                color: '#38bdf8',
+                weight: 5,
+                opacity: 0.8,
+                dashArray: '10, 10',
+                className: 'animated-route'
+            }).addTo(map);
+
+            const infoDiv = document.getElementById('routeInfo');
+            infoDiv.innerHTML = `Distance: ${routeData.distance}<br>Duration: ${routeData.duration}`;
+        }
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

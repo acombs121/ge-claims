@@ -74,11 +74,11 @@ agent_card = a2a_types.AgentCard(
     capabilities=a2a_types.AgentCapabilities(streaming=True),
     skills=[
         a2a_types.AgentSkill(
-            id="supply_chain_resilience",
-            name="P&G Supply Chain Advisor",
-            description="Analyzes BigQuery data to identify regional stockout risks and run simulation tradeoffs.",
-            tags=["p&g", "supply_chain", "cpg", "simulator"],
-            examples=["Show me Savannah port congestion impacts on Tide.", "Model cost vs speed if we Air Freight Tide."],
+            id="hr_self_service",
+            name="Aon HR Assistant",
+            description="Helps with performance reviews, benefits information, and vacation requests via Workday integration.",
+            tags=["aon", "hr", "workday", "performance_review"],
+            examples=["Let's look at my HR portal.", "Help me prepare for my performance review.", "How many vacation days do I have left?"],
         )
     ]
 )
@@ -101,6 +101,23 @@ from starlette.routing import Route
 
 async def serve_media(request):
     media_id = request.path_params.get("media_id")
+    
+    # Local Fallback Check (Safety feature)
+    if not os.environ.get("K_SERVICE"):
+        local_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'media_cache')
+        local_path = os.path.join(local_dir, media_id)
+        if os.path.exists(local_path):
+            try:
+                with open(local_path, "rb") as f:
+                    bytes_data = f.read()
+                ext = media_id.split(".")[-1].lower()
+                media_type = "image/png" if ext == "png" else "image/jpeg"
+                if ext == "webp": media_type = "image/webp"
+                return Response(content=bytes_data, media_type=media_type)
+            except Exception as e:
+                logger.error(f"Error serving media from local cache: {e}")
+                # Fallback to GCS if local read fails
+                
     try:
         from google.cloud import storage
         client = storage.Client(project="sandbox-426014")
@@ -153,9 +170,9 @@ async def handle_erp_submit(request: Request):
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
                     <h3 style="margin: 0 0 8px 0; font-size: 1.25rem;">Sync Successful!</h3>
-                    <p style="margin: 0; color: #94a3b8; font-size: 0.875rem;">Logistics reroute verified & pushed to SAP.</p>
+                    <p style="margin: 0; color: #94a3b8; font-size: 0.875rem;">Benefit registration verified & pushed to Workday.</p>
                 </body>
-            </html>
+                    </html>
         """)
     except Exception as e:
         return HTMLResponse(content=f"""
@@ -169,5 +186,36 @@ async def handle_erp_submit(request: Request):
 
 app.routes.append(Route("/submit_erp", handle_erp_submit, methods=["POST"]))
 
+async def serve_logo(request):
+    filename = request.path_params.get("filename")
+    
+    if not os.environ.get("K_SERVICE"):
+        local_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'logos')
+        local_path = os.path.join(local_dir, filename)
+        if os.path.exists(local_path):
+            from starlette.responses import Response
+            with open(local_path, "rb") as f:
+                return Response(content=f.read(), media_type="image/png")
+            
+    try:
+        from google.cloud import storage
+        client = storage.Client(project="sandbox-426014")
+        bucket = client.bucket("sandbox-426014-a2ui-media-cache")
+        blob = bucket.blob(f"logos/{filename}")
+        
+        from starlette.responses import Response
+        if not blob.exists():
+             return Response(content="Logo not found in GCS", status_code=404)
+             
+        bytes_data = blob.download_as_bytes()
+        return Response(content=bytes_data, media_type="image/png")
+    except Exception as e:
+        from starlette.responses import Response
+        return Response(content=f"Internal Server Error: {str(e)}", status_code=500)
+
+app.routes.append(Route("/logos/{filename}", serve_logo, methods=["GET"]))
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port, timeout_keep_alive=120)

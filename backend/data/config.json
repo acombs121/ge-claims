@@ -1,0 +1,25 @@
+{
+  "demo_defaults": {
+    "industry": "Tech",
+    "prioritization": "Account Size",
+    "sub_region": "Boston Metro",
+    "travel_window": "2026-04-15 to 2026-04-20",
+    "min_arr": 100000,
+    "industry_options": [
+      {"label": "Finance", "value": "Finance"},
+      {"label": "Healthcare", "value": "Healthcare"},
+      {"label": "Tech", "value": "Tech"},
+      {"label": "Retail", "value": "Retail"}
+    ],
+    "prioritization_options": [
+      {"label": "Account Size", "value": "Account Size"},
+      {"label": "Churn Risk", "value": "Churn Risk"},
+      {"label": "Upsell Potential", "value": "Upsell Potential"}
+    ]
+  },
+  "ui_settings": {
+    "enable_spatial_analytics": true,
+    "chart_theme": "premium_dark",
+    "enable_streaming_healer": true
+  }
+}

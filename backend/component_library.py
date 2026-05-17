@@ -1,0 +1,207 @@
+"""Helper functions to build A2UI components cleanly.
+
+Based on documentation for A2UI 0.8 compatibility.
+"""
+
+from collections.abc import Sequence
+from typing import Any
+
+def text(
+    *, element_id: str, content: str, usage_hint: str = "body"
+) -> dict[str, Any]:
+  """Generates a Text component."""
+  return {
+      "id": element_id,
+      "component": {
+          "Text": {
+              "text": {"literalString": content},
+              "usageHint": usage_hint,
+          }
+      },
+  }
+
+def column(*, element_id: str, children: list[str]) -> dict[str, Any]:
+  """Generates a Column component."""
+  return {
+      "id": element_id,
+      "component": {"Column": {"children": {"explicitList": children}}},
+  }
+
+def card(*, element_id: str, child: str) -> dict[str, Any]:
+  """Generates a Card component."""
+  return {
+      "id": element_id,
+      "component": {"Card": {"child": child}},
+  }
+
+def button(
+    *,
+    element_id: str,
+    label: str,
+    action_name: str,
+    context: Sequence[dict[str, Any]],
+    primary: bool = False,
+) -> list[dict[str, Any]]:
+  """Generates a Button component and its required Text child component."""
+  text_id = f"txt_{element_id}"
+  return [
+      {
+          "id": element_id,
+          "component": {
+              "Button": {
+                  "child": text_id,
+                  "primary": primary,
+                  "action": {
+                      "name": action_name,
+                      "context": context,
+                  },
+              }
+          },
+      },
+      {
+          "id": text_id,
+          "component": {
+              "Text": {
+                  "text": {"literalString": label},
+                  "usageHint": "body",
+              }
+          },
+      },
+  ]
+
+def row(
+    *, element_id: str, children: list[str], distribution: str = ""
+) -> dict[str, Any]:
+  """Generates a Row component."""
+  row_component = {"children": {"explicitList": children}}
+  if distribution:
+    row_component["distribution"] = distribution
+  return {
+      "id": element_id,
+      "component": {"Row": row_component},
+  }
+
+def icon(
+    *, element_id: str, name: str
+) -> dict[str, Any]:
+  """Generates an Icon component."""
+  return {
+      "id": element_id,
+      "component": {
+          "Icon": {
+              "name": {"literalString": name},
+          }
+      },
+  }
+
+def image(
+    *,
+    element_id: str,
+    url: str = "",
+    url_path: str = "",
+    usage_hint: str = "mediumFeature",
+    fit: str = "contain",
+) -> dict[str, Any]:
+  """Generates an Image component."""
+  image_url = {"path": url_path} if url_path else {"literalString": url}
+  return {
+      "id": element_id,
+      "component": {
+          "Image": {
+              "url": image_url,
+              "usageHint": usage_hint,
+              "fit": fit,
+          }
+      },
+  }
+
+def divider(*, element_id: str) -> dict[str, Any]:
+  """Generates a Divider component."""
+  return {
+      "id": element_id,
+      "component": {"Divider": {}},
+  }
+
+def list_explicit(
+    *, element_id: str, children: list[str], direction: str = "vertical"
+) -> dict[str, Any]:
+  """Generates a List component with explicit children."""
+  return {
+      "id": element_id,
+      "component": {
+          "List": {
+              "children": {"explicitList": children},
+              "direction": direction,
+          }
+      },
+  }
+
+def mime_type() -> dict[str, str]:
+  """Returns the standard A2UI MIME type metadata."""
+  return {"mimeType": "application/json+a2ui"}
+
+def surface_update(
+    *, surface_id: str, components: list[dict[str, Any]]
+) -> dict[str, Any]:
+  """Generates a surfaceUpdate payload."""
+  return {
+      "surfaceUpdate": {
+          "surfaceId": surface_id,
+          "components": components,
+      }
+  }
+
+def begin_rendering(
+    *, surface_id: str, root: str = "root"
+) -> dict[str, Any]:
+  """Generates a beginRendering payload."""
+  return {
+      "beginRendering": {
+          "surfaceId": surface_id,
+          "root": root,
+      }
+  }
+
+def web_frame_url(
+    *, element_id: str, url: str
+) -> dict[str, Any]:
+  """Generates a WebFrameUrl component for allowlisted external iframes."""
+  return {
+      "id": element_id,
+      "component": {
+          "WebFrameUrl": {
+              "url": {"literalString": url},
+          }
+      },
+  }
+
+def product_selection(
+    *,
+    element_id: str,
+    columns: list[dict[str, Any]],
+    rows: list[dict[str, Any]],
+    title: str = "Product Selection",
+    confirm_label: str = "Confirm",
+    cancel_label: str = "Cancel",
+    on_confirm_action: str = "",
+    on_cancel_action: str = "",
+) -> dict[str, Any]:
+  """Generates a ProductSelection custom native component for editable tables/picklists."""
+  component_data: dict[str, Any] = {
+      "columns": columns,
+      "rows": rows,
+      "productTableTitle": title,
+      "confirmLabel": confirm_label,
+      "cancelLabel": cancel_label,
+  }
+  if on_confirm_action:
+    component_data["onConfirm"] = {"name": on_confirm_action, "context": []}
+  if on_cancel_action:
+    component_data["onCancel"] = {"name": on_cancel_action, "context": []}
+    
+  return {
+      "id": element_id,
+      "component": {
+          "ProductSelection": component_data
+      }
+  }

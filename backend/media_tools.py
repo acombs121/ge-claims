@@ -109,21 +109,49 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
             )
         )
 
-        response = client.models.generate_content(
-            model="gemini-3.1-flash-image-preview",
-            contents=contents,
-            config=generate_content_config,
-        )
+        print(f"A2UI-IMAGE-DEBUG | Calling generate_content with model: gemini-3.1-flash-image-preview")
+        print(f"A2UI-IMAGE-DEBUG | Contents: {contents}")
+        print(f"A2UI-IMAGE-DEBUG | Config: {generate_content_config}")
+        try:
+            response = client.models.generate_content(
+                model="gemini-3.1-flash-image-preview",
+                contents=contents,
+                config=generate_content_config,
+            )
+            print(f"A2UI-IMAGE-DEBUG | Response received successfully.")
+        except Exception as e:
+            import traceback
+            print(f"A2UI-IMAGE-DEBUG | Error calling generate_content: {str(e)}")
+            print(f"A2UI-IMAGE-DEBUG | Traceback: {traceback.format_exc()}")
+            raise e
 
         for candidate in response.candidates:
             if hasattr(candidate, 'content') and candidate.content and candidate.content.parts:
                 for part in candidate.content.parts:
                     import uuid
+                    media_id = str(uuid.uuid4())
+                    agent_root = os.environ.get("AGENT_URL", "")
+                    
+                    # Local Fallback Check
+                    if not os.environ.get("K_SERVICE"):
+                        local_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'media_cache')
+                        os.makedirs(local_dir, exist_ok=True)
+                        
+                        if hasattr(part, 'inline_data') and part.inline_data:
+                            ext = part.inline_data.mime_type.split('/')[-1] if '/' in part.inline_data.mime_type else 'png'
+                            with open(os.path.join(local_dir, f"{media_id}.{ext}"), "wb") as f:
+                                f.write(part.inline_data.data)
+                            return f"{agent_root}/media/{media_id}.{ext}"
+                            
+                        elif hasattr(part, 'image') and part.image:
+                            with open(os.path.join(local_dir, f"{media_id}.jpeg"), "wb") as f:
+                                f.write(part.image.image_bytes)
+                            return f"{agent_root}/media/{media_id}.jpeg"
+                            
+                    # Original GCS path (only if K_SERVICE is present)
                     from google.cloud import storage
                     storage_client = storage.Client(project="sandbox-426014")
                     bucket = storage_client.bucket("sandbox-426014-a2ui-media-cache")
-                    media_id = str(uuid.uuid4())
-                    agent_root = os.environ.get("AGENT_URL", "")
 
                     if hasattr(part, 'inline_data') and part.inline_data:
                         ext = part.inline_data.mime_type.split('/')[-1] if '/' in part.inline_data.mime_type else 'png'

@@ -1,40 +1,71 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from google.adk.agents import Agent
 from prompt_builder import get_ui_instruction
-from mock_data_tool import fetch_comprehensive_dashboard_data, process_form_submission
-from media_tools import describe_storage_assets, generate_synthetic_image
+from hr_data import get_hr_portal_overview, get_performance_reviews, get_benefits_summary, register_benefit, reset_state
+from media_tools import generate_synthetic_image
+
+
+async def generate_hr_graphic(prompt: str = "Generate a clean, modern, but minimalist visual skill matrix diagram for a software engineering team consisting of a Manager (John), and two direct reports (Alice and Bob). For Bob, show scores of Leadership: 3.0, Delivery: 4.0, Mentorship: 3.0, Innovation: 3.5, Communication: 3.0 on a 5-point scale. Use Aon corporate aesthetics with red and grey primary colors, and clean lines. Do NOT include any human avatars, portraits, or specific skin tones. Use text or generic shapes/icons only. Do NOT include any Lorem Ipsum text or random gibberish text."):
+    """Generates an insightful graphic for HR analysis."""
+    url = await generate_synthetic_image(prompt)
+    return {
+        "src": url,
+        "alt": "HR Graphic"
+    }
 
 SYSTEM_INSTRUCTION = """
-You are a specialized Strategy AI Assistant for Acme Corp.
-Your objective is to test various responses, both simple text or also potentially including A2UI visual components, especially the new VegaChart, DataGrid, and Map integrations using the mock datasets provided.
+You are the AI Assistant helping employees with HR tasks and performance review preparation.
+Your goal is to showcase the capabilities of the platform through a specialized HR demo, highlighting secure data access and Workday integration.
 
-### Core Directives:
+### Demo Flow & A2UI Instructions:
+
 - **Rule of Thumb**: Always provide a brief, conversational one-liner of native text BEFORE outputting any A2UI widget.
-- Always call `fetch_comprehensive_dashboard_data` to retrieve the Acme Corp dummy data.
-- If asked a simple question (what's the time. What were sales today, etc.) You can respond just with the concise text-based answer.
-- If asked for sales data or a table, output a Native A2UI Array containing the `DataGrid` component using `sales_tabular_data`.
-- If asked for charts or growth, output a Native A2UI Array containing the `VegaChart` component using `growth_chart_spec`.
-- If asked for a location or map, output a `CustomView` object for the 'map' template showing the `hq_location`.
-- If asked for a comprehensive dashboard, output a `CustomView` object for the 'dashboard' template incorporating the KPIs.
-- If asked for forms, output a `CustomView` dashboard containing a `form` type panel.
-- If asked for network connections or relations, output a `CustomView` dashboard containing a `d3-network` type panel. **Important**: Expand the vertical footprint by explicitly setting the CustomView 'height' parameter directly to '750px' so nodes do not snap outside the edges. Make it standalone by completely omitting `kpis`, `title`, and `subtitle` keys.
-- If asked for hotspots or geo-heatmaps, output a `CustomView` dashboard containing a `map-heatmap` type panel. **Note**: Explicitly set `renderType: 'markers'` if pinpointing is required over diffuse density.
-- If asked to explicitly model, simulate, or forecast scenarios (e.g. "simulate", "model the future"), output a `CustomView` dashboard containing a `simulator` type panel and bind relevant variables with a valid Javascript math formula inside `onUpdateBody`. Ensure complex nonlinear logic linking multiple inputs to specific outputs natively. **Important: Make it standalone.**
-- If asked to mock an external app widget or contextual panel (e.g. "Workday", "Salesforce", "Action Panel"), output a `CustomView` dashboard containing a `3p-widget` type panel mirroring the specified brand UI. **Important: Make it standalone.**
-- If asked to generate an image natively, invoke `generate_synthetic_image` to generate it, then inject the resultant relative URL string natively into an `image` type CustomView dashboard panel's `src` property. **Important: Make it standalone by completely omitting `kpis`, `title`, and `subtitle` keys.**
-- If asked to display media from the cloud, invoke `describe_storage_assets`. For Videos and Audio, inject those URLs into `video` or `audio` CustomView dashboard panels natively.
-- **Autonomous UI Rendering**: You are expected to intelligently decide when to generate an interactive A2UI dashboard. If the user's question inherently benefits from visual analysis (e.g., "What is our Q3 pipeline?", "How are our stores performing?"), autonomously generate an A2UI `---a2ui_JSON---` payload even if they didn't explicitly request a chart.
-- **Abstention Bounds**: Conversely, if the user asks simple conversational trivia (e.g., "Hello", "What time is it?", "Who am I?"), or naturally requests an unstructured file (like a PDF link), you must gracefully abstain from rendering UI components. Simply respond with native text or Markdown links, entirely omitting the `---a2ui_JSON---` delimiter.
+- **CRITICAL**: DO NOT repeat the JSON payload or the tool's raw data in your conversational response.
+- **CRITICAL**: You MUST ALWAYS output the delimiter `---a2ui_JSON---` on a new line before outputting any JSON payload. Failure to do so will break the UI.
+- **CRITICAL**: Ensure all JSON payloads are perfectly valid. Never include trailing commas in arrays or objects, as this will break the parser in the client UI.
+- **CRITICAL**: When you receive a "User action triggered" message, read the payload and call the appropriate tool. Do NOT automatically proceed to the next query or output another component unless instructed.
+- **CRITICAL**: Do not jump ahead in the demo flow. Wait for the user to ask the specific query for each step.
+
+#### Phase 1: Security & Context Display
+- **Trigger:** "let's look at my HR portal" or similar.
+- **Action:** Call `get_hr_portal_overview()`.
+- **UI Output:** Output the JSON returned by `get_hr_portal_overview()` wrapped in `---a2ui_JSON---`. The dashboard should show profile details and the D3 org chart.
+
+#### Phase 2: Performance Review Synthesis
+- **Trigger:** "help me prepare for my performance review" or similar.
+- **Action:** Call `get_performance_reviews()`.
+- **UI Output:** Output the JSON returned by `get_performance_reviews()` wrapped in `---a2ui_JSON---`. Highlight the non-obvious insights in your conversational response.
+
+#### Phase 3: Employee Self-Service & Workday
+- **Trigger:** "how many vacation days do I have left?" or similar.
+- **Action:** Call `get_benefits_summary()`.
+- **UI Output:** Do NOT format or synthesize any CustomView dashboard or UI JSON yourself. The backend server will automatically format the native card from the tool data.
+
+#### Phase 3.5: Benefit Registration Action
+- **Trigger:** "Enroll me in the Commuter Benefit" or similar.
+- **Action:** Call `register_benefit(benefit_name="Commuter Benefit")`.
+- **UI Output:** Do NOT format or synthesize any CustomView dashboard or UI JSON yourself. The backend server will automatically format the native card from the tool data.
+
+#### Phase 4: Standalone Insightful Graphic (Optional)
+- **Trigger:** "generate a team skill matrix graphic" or similar.
+- **Action:** You MUST ALWAYS call `generate_hr_graphic()` to get the payload. DO NOT generate the JSON payload yourself.
+- **UI Output:** Output the EXACT JSON returned by `generate_hr_graphic()` wrapped in `---a2ui_JSON---`.
 """
 
 root_agent = Agent(
-    name="test_a2ui_agent",
-    model="gemini-3-flash-preview",
+    name="aon_hr_agent",
+    model="gemini-3.1-flash-lite-preview",
     instruction=get_ui_instruction(SYSTEM_INSTRUCTION),
-    description="Agent tests Generative imaging, D3 mapping, form capture, and A2UI baseline rendering natively.",
+    description="Agent for HR self-service and performance review workflows.",
     tools=[
-        fetch_comprehensive_dashboard_data,
-        describe_storage_assets,
-        process_form_submission,
-        generate_synthetic_image
+        get_hr_portal_overview,
+        get_performance_reviews,
+        get_benefits_summary,
+        register_benefit,
+        generate_hr_graphic,
+        reset_state
     ]
 )

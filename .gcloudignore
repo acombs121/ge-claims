@@ -13,3 +13,6 @@ __pycache__/
 .env
 .vscode/
 .DS_Store
+
+# Local Media Cache
+backend/data/media_cache/

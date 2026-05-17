@@ -1,0 +1,54 @@
+{
+  "steps": [
+    {
+      "phase": 1,
+      "trigger_queries": [
+        "how many vacation days do I have left?",
+        "check my vacation"
+      ],
+      "action_tool": "get_benefits_summary",
+      "output_mode": "native",
+      "native_mapper": "build_benefits_card"
+    },
+    {
+      "phase": 2,
+      "trigger_queries": [
+        "let's look at my HR portal",
+        "show my portal"
+      ],
+      "action_tool": "get_hr_portal_overview",
+      "output_mode": "iframe",
+      "template": "workday_portal"
+    },
+    {
+      "phase": 3,
+      "trigger_queries": [
+        "Enroll me in the Commuter Benefit",
+        "register for commuter benefit"
+      ],
+      "action_tool": "register_benefit",
+      "output_mode": "native",
+      "native_mapper": "build_confirmation_card"
+    },
+    {
+      "phase": 4,
+      "trigger_queries": [
+        "help me prepare for my performance review",
+        "performance review prep"
+      ],
+      "action_tool": "get_performance_reviews",
+      "output_mode": "iframe",
+      "template": "workday_portal"
+    },
+    {
+      "phase": 5,
+      "trigger_queries": [
+        "generate a team skill matrix graphic",
+        "create skill matrix"
+      ],
+      "action_tool": "generate_hr_graphic",
+      "output_mode": "native",
+      "native_mapper": "build_image_card"
+    }
+  ]
+}

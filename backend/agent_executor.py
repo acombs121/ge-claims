@@ -5,6 +5,7 @@ import logging
 import os
 import uuid
 from a2a import types
+from a2a.types import TaskState
 from a2a import utils
 from a2a.server import agent_execution
 from a2a.server import events
@@ -44,14 +45,56 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
         from agent import root_agent
         self._agent = root_agent
         
+    session_service = in_memory_session_service.InMemorySessionService()
+
     self._runner = runners.Runner(
         app_name=self._agent.name,
         agent=self._agent,
-        session_service=in_memory_session_service.InMemorySessionService(),
+        session_service=session_service,
         artifact_service=in_memory_artifact_service.InMemoryArtifactService(),
         memory_service=in_memory_memory_service.InMemoryMemoryService(),
     )
     self._user_id = "remote_agent"
+    self._cached_ui_payload = None
+    self._last_tool_name = None
+    self._last_tool_data = None
+
+    wrapped_tools = []
+    for t in getattr(self._agent, 'tools', []):
+        t_name = getattr(t, '__name__', None) or getattr(t, 'name', None) or 'tool'
+        wrapped_tools.append(self._wrap_tool(t, t_name))
+    self._agent.tools = wrapped_tools
+
+    # Load demo manifest
+    manifest_path = os.path.join(os.path.dirname(__file__), 'demo_manifest.json')
+    self._manifest = {}
+    if os.path.exists(manifest_path):
+        try:
+            with open(manifest_path, 'r') as f:
+                self._manifest = json.load(f)
+            logger.info("[DEBUG] demo_manifest.json successfully loaded.")
+        except Exception as e:
+            logger.error("[DEBUG] Failed to parse demo_manifest.json: %s", e)
+
+  def _wrap_tool(self, tool_func, tool_name):
+      import inspect
+      from functools import wraps
+      if inspect.iscoroutinefunction(tool_func):
+          @wraps(tool_func)
+          async def async_wrapper(*args, **kwargs):
+              res = await tool_func(*args, **kwargs)
+              self._last_tool_name = tool_name
+              self._last_tool_data = res
+              return res
+          return async_wrapper
+      else:
+          @wraps(tool_func)
+          def sync_wrapper(*args, **kwargs):
+              res = tool_func(*args, **kwargs)
+              self._last_tool_name = tool_name
+              self._last_tool_data = res
+              return res
+          return sync_wrapper
 
   def _build_webframe(self, data, template_name="dashboard"):
     """Build a WebFrame component from injected data and template."""
@@ -124,6 +167,198 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
         }
       }]
 
+  def _process_response_content(self, final_response_content: str, cached_ui_payload: list = None) -> tuple:
+      """Processes the agent's response and appends any cached A2UI payload."""
+      parts = []
+      is_valid = False
+      error_message = ""
+      json_string_cleaned = "[]"
+      text_part = final_response_content
+
+      if "---a2ui_JSON---" not in final_response_content:
+        is_valid = True
+        json_string_cleaned = None
+      else:
+        try:
+          import re
+          text_part, json_string = final_response_content.split("---a2ui_JSON---", 1)
+          text_part = text_part.strip()
+          
+          match = re.search(r'(?:```(?:json)?\s*)?([\[\{][\s\S]*[\]\}])', json_string.strip())
+          if match:
+              json_string_cleaned = match.group(1).strip()
+          else:
+              json_string_cleaned = json_string.strip().lstrip("```json").rstrip("```").strip()
+
+          if not json_string_cleaned: json_string_cleaned = "[]"
+          parsed_json = json.loads(json_string_cleaned)
+          
+          def has_custom_view(obj):
+              if isinstance(obj, dict):
+                  if "CustomView" in obj:
+                      return True
+                  return any(has_custom_view(v) for v in obj.values())
+              elif isinstance(obj, list):
+                  return any(has_custom_view(item) for item in obj)
+              return False
+
+          is_custom_view = has_custom_view(parsed_json)
+
+          if self.a2ui_schema_object and not is_custom_view and not cached_ui_payload:
+              if not (isinstance(parsed_json, dict) and any(k in parsed_json for k in ["vacation", "success", "src", "title", "grid"])):
+                  import jsonschema
+                  jsonschema.validate(instance=parsed_json, schema=self.a2ui_schema_object)
+
+          is_valid = True
+        except Exception as e:
+          error_message = f"Validation failed: {str(e)}"
+          logger.error(error_message)
+
+      if is_valid:
+        if text_part.strip():
+          parts.append(types.Part(root=types.TextPart(text=text_part.strip())))
+
+        processed_data = None
+        if json_string_cleaned:
+            json_data = json.loads(json_string_cleaned)
+            processed_data = json_data
+            
+            def find_custom_view(obj):
+                if isinstance(obj, dict):
+                    if "CustomView" in obj:
+                        return obj["CustomView"]
+                    for v in obj.values():
+                        res = find_custom_view(v)
+                        if res: return res
+                elif isinstance(obj, list):
+                    for item in obj:
+                        res = find_custom_view(item)
+                        if res: return res
+                return None
+
+            active_tool = getattr(self, '_last_tool_name', None)
+            if active_tool == 'tool': active_tool = None
+            active_data = getattr(self, '_last_tool_data', None)
+            if active_data is None and isinstance(json_data, dict):
+                active_data = json_data
+                if not active_tool: active_tool = json_data.get("_source_tool")
+                
+            manifest_handled = False
+            if active_tool:
+                steps = self._manifest.get("steps", [])
+                tool_cfg = next((s for s in steps if s.get("action_tool") == active_tool), None)
+                if tool_cfg:
+                    output_mode = tool_cfg.get("output_mode")
+                    if output_mode == "iframe":
+                        template = tool_cfg.get("template", "dashboard")
+                        processed_data = self._build_webframe(active_data or json_data, template)
+                        manifest_handled = True
+                    elif output_mode == "url":
+                        url_str = tool_cfg.get("url") or (isinstance(active_data, dict) and active_data.get("url")) or str(active_data)
+                        import component_library as cl
+                        processed_data = [
+                            cl.begin_rendering(surface_id="canvas-surface", root="root-url"),
+                            cl.surface_update(surface_id="canvas-surface", components=[cl.web_frame_url(element_id="root-url", url=url_str)])
+                        ]
+                        manifest_handled = True
+                    elif output_mode == "native":
+                        mapper_name = tool_cfg.get("native_mapper")
+                        import component_mappers as cm
+                        mapper_func = getattr(cm, mapper_name, None)
+                        if mapper_func:
+                            processed_data = mapper_func(active_data or json_data)
+                            manifest_handled = True
+            
+            if not manifest_handled:
+                target_view = find_custom_view(json_data)
+                if target_view:
+                    view_data = target_view.get("data", {})
+                    if "theme" in target_view:
+                        view_data["theme"] = target_view["theme"]
+                    processed_data = self._build_webframe(view_data, target_view.get("template", "dashboard"))
+
+        # Intercepted Payload Handling (Merged)
+        if cached_ui_payload:
+            processed_data = cached_ui_payload
+
+        if processed_data:
+            if isinstance(processed_data, list):
+              for message in processed_data:
+                parts.append(types.Part(root=types.DataPart(data=message, metadata={"mimeType": "application/json+a2ui"})))
+            else:
+              parts.append(types.Part(root=types.DataPart(data=processed_data, metadata={"mimeType": "application/json+a2ui"})))
+
+        return parts, True
+      else:
+        return [], False
+
+  async def _handle_intercepted_action(self, query: str) -> list:
+      """Intercepts specific user actions and handles them deterministically."""
+      steps = self._manifest.get("steps", [])
+      for step in steps:
+          triggers = step.get("trigger_queries", [])
+          for trigger in triggers:
+              clean_q = query.lower().replace('?', '').replace('.', '').replace('!', '').strip()
+              clean_t = trigger.lower().replace('?', '').replace('.', '').replace('!', '').strip()
+              if clean_t in clean_q:
+                  logger.info(f"[DEBUG] Intercepted query '{query}' matching trigger '{trigger}'")
+                  action_tool = step.get("action_tool")
+                  output_template = step.get("output_template")
+                  
+                  tool_func = None
+                  for t in self._agent.tools:
+                      name = getattr(t, '__name__', None) or getattr(t, 'name', None)
+                      if name == action_tool:
+                          tool_func = t
+                          break
+                          
+                  if tool_func:
+                      try:
+                          import inspect
+                          if inspect.iscoroutinefunction(tool_func):
+                              result = await tool_func()
+                          else:
+                              result = tool_func()
+                              
+                          output_mode = step.get("output_mode")
+                          processed_data = None
+                          
+                          if output_mode == "iframe":
+                              template = step.get("template", "dashboard")
+                              processed_data = self._build_webframe(result, template)
+                          elif output_mode == "url":
+                              url_str = step.get("url") or (isinstance(result, dict) and result.get("url")) or str(result)
+                              import component_library as cl
+                              processed_data = [
+                                  cl.begin_rendering(surface_id="canvas-surface", root="root-url"),
+                                  cl.surface_update(surface_id="canvas-surface", components=[
+                                      cl.web_frame_url(element_id="root-url", url=url_str)
+                                  ])
+                              ]
+                          elif output_mode == "native":
+                              mapper_name = step.get("native_mapper")
+                              import component_mappers
+                              mapper_func = getattr(component_mappers, mapper_name, None)
+                              if mapper_func:
+                                  processed_data = mapper_func(result)
+                                  
+                          if processed_data:
+                              parts = []
+                              parts.append(types.Part(root=types.TextPart(text=f"Here is the {action_tool.replace('_', ' ')}.")))
+                              
+                              if isinstance(processed_data, list):
+                                  for message in processed_data:
+                                      parts.append(types.Part(root=types.DataPart(data=message, metadata={"mimeType": "application/json+a2ui"})))
+                              else:
+                                  parts.append(types.Part(root=types.DataPart(data=processed_data, metadata={"mimeType": "application/json+a2ui"})))
+                                  
+                              return parts
+                              
+                      except Exception as e:
+                          logger.error(f"Failed to execute tool {action_tool}: {e}")
+                          return None
+      return None
+
   async def execute(self, context: agent_execution.RequestContext, event_queue: events.EventQueue) -> None:
     query = context.get_user_input()
     task = context.current_task
@@ -176,6 +411,17 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
         
     updater = tasks.TaskUpdater(event_queue, task.id, task.context_id)
     session_id = task.context_id
+    
+    self._last_tool_name = None
+    self._last_tool_data = None
+    
+    # Intercept Action Check
+    intercepted_parts = await self._handle_intercepted_action(query)
+    if intercepted_parts:
+        await updater.start_work()
+        await updater.add_artifact(intercepted_parts, name="response")
+        await updater.complete()
+        return
 
     session = await self._runner.session_service.get_session(
         app_name=self._agent.name, user_id=self._user_id, session_id=session_id
@@ -186,10 +432,27 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
       )
 
     current_query_text = query
+    if context.message and hasattr(context.message, 'parts'):
+        for part in context.message.parts:
+            if hasattr(part, 'root') and hasattr(part.root, 'data') and isinstance(part.root.data, dict) and "userAction" in part.root.data:
+                action_data = part.root.data["userAction"]
+                ui_context = action_data.get("context", {})
+                action_name = action_data.get("name", "")
+                # Ensure lists are unwrapped to strings for the LLM to avoid confusion
+                clean_context = {k: (v[0] if isinstance(v, list) and v else v) for k, v in ui_context.items()}
+                current_query_text = f"User action triggered: name={action_name}, context={json.dumps(clean_context)}"
+                logger.info(f"A2UI-INJECT | Updated query text with UI event context: {current_query_text}")
     max_retries = 3
     attempt = 0
 
     await updater.start_work()
+    
+    # 1. Send an initial thought to prevent the default query echo.
+    await updater.update_status(
+        TaskState.working,
+        utils.new_agent_text_message(f"Processing query: '{current_query_text}'"),
+        metadata={"thinking_details": {"steps": [{"type": "thought", "content": f"Processing query: '{current_query_text}'"}]}}
+    )
 
     while attempt <= max_retries:
       attempt += 1
@@ -200,9 +463,106 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
         async for event in self._runner.run_async(
             user_id=self._user_id, session_id=session.id, new_message=content
         ):
+          evt_str = str(event)
+          if not (hasattr(event, 'is_thought') and event.is_thought()):
+              logger.info(f"[STREAM EVENT] dir={dir(event)} str={evt_str[:250]}")
+          for step in self._manifest.get("steps", []):
+              t_name = step.get("action_tool")
+              if t_name and (f"'{t_name}'" in evt_str or f'"{t_name}"' in evt_str or f"name={t_name}" in evt_str or f"tool_name={t_name}" in evt_str or f"function={t_name}" in evt_str):
+                  self._last_tool_name = t_name
+
+          # 2. Handle granular thinking updates
+          thinking_steps = []
+          
+          if hasattr(event, 'is_thought') and event.is_thought():
+              thought_text = getattr(event, 'thought', 'Thinking...')
+              thinking_steps.append({"type": "thought", "content": thought_text})
+          elif hasattr(event, 'is_tool_call') and event.is_tool_call():
+              tool_call = getattr(event, 'tool_call', None)
+              if not tool_call:
+                  t_calls = getattr(event, 'tool_calls', None) or getattr(event, 'function_calls', None)
+                  if t_calls and isinstance(t_calls, list) and len(t_calls) > 0:
+                      tool_call = t_calls[0]
+              tool_name = getattr(tool_call, 'tool_name', None) or getattr(tool_call, 'name', None) or getattr(tool_call, 'function_name', None)
+              if not tool_name and isinstance(tool_call, dict):
+                  tool_name = tool_call.get('name') or tool_call.get('tool_name') or tool_call.get('function_name')
+              if not tool_name:
+                  tool_name = getattr(event, 'tool_name', None) or getattr(event, 'name', None) or 'tool'
+              self._last_tool_name = tool_name
+              args = getattr(tool_call, 'args', {}) if tool_call else {}
+              thinking_steps.append({
+                  "type": "tool_call",
+                  "content": {"name": tool_name, "args": args}
+              })
+          elif hasattr(event, 'is_tool_result') and event.is_tool_result():
+              tool_result = getattr(event, 'tool_result', 'Result received')
+              current_tool_name = getattr(event, 'tool_name', None) or getattr(event, 'name', None) or self._last_tool_name
+              self._last_tool_name = current_tool_name
+              if self._last_tool_name and isinstance(tool_result, dict):
+                  tool_result["_source_tool"] = self._last_tool_name
+              
+              if self._last_tool_name:
+                  steps = self._manifest.get("steps", [])
+                  tool_cfg = next((s for s in steps if s.get("action_tool") == self._last_tool_name), None)
+                  
+                  if tool_cfg:
+                      output_mode = tool_cfg.get("output_mode")
+                      
+                      if output_mode == "iframe":
+                          template = tool_cfg.get("template", "dashboard")
+                          processed_data = self._build_webframe(tool_result, template)
+                          self._cached_ui_payload = processed_data
+                          logger.info(f"[DEBUG] Intercepted tool result for {self._last_tool_name}, mapped to iframe with template {template}")
+                          
+                      elif output_mode == "url":
+                          url_str = tool_cfg.get("url") or (isinstance(tool_result, dict) and tool_result.get("url")) or str(tool_result)
+                          import component_library as cl
+                          processed_data = [
+                              cl.begin_rendering(surface_id="canvas-surface", root="root-url"),
+                              cl.surface_update(surface_id="canvas-surface", components=[
+                                  cl.web_frame_url(element_id="root-url", url=url_str)
+                              ])
+                          ]
+                          self._cached_ui_payload = processed_data
+                          logger.info(f"[DEBUG] Intercepted tool result for {self._last_tool_name}, mapped to url: {url_str}")
+                          
+                      elif output_mode == "native":
+                          mapper_name = tool_cfg.get("native_mapper")
+                          import component_mappers
+                          mapper_func = getattr(component_mappers, mapper_name, None)
+                          if mapper_func:
+                              processed_data = mapper_func(tool_result)
+                              self._cached_ui_payload = processed_data
+                              logger.info(f"[DEBUG] Intercepted tool result for {self._last_tool_name}, mapped to native via {mapper_name}")
+                          else:
+                              logger.warning(f"[DEBUG] Mapper {mapper_name} not found in component_mappers")
+                      
+              result_text = str(tool_result)
+              thinking_steps.append({"type": "tool_observation", "content": result_text})
+          
+          # Always check for final response as well
           if event.is_final_response():
             if event.content and event.content.parts and event.content.parts[0].text:
               final_response_content = "\n".join([p.text for p in event.content.parts if p.text])
+            final_step = {"type": "thought", "content": "Formatting final UI components."}
+            if final_step not in thinking_steps:
+                thinking_steps.append(final_step)
+
+          if thinking_steps:
+              step_msg = "Agent is thinking..."
+              for step in thinking_steps:
+                  if step["type"] == "tool_call":
+                      args_str = ", ".join(f"{k}={v}" for k, v in step["content"]["args"].items())
+                      step_msg = f"Executing tool: {step['content']['name']}({args_str})"
+                      break
+                  elif step["type"] == "thought":
+                      step_msg = f"Reasoning: {step['content']}"
+                      break
+              await updater.update_status(
+                  TaskState.working,
+                  utils.new_agent_text_message(step_msg),
+                  metadata={"thinking_details": {"steps": thinking_steps}}
+              )
 
       except Exception as e:
         if attempt <= max_retries:
@@ -220,119 +580,23 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
         await updater.failed(message=utils.new_agent_text_message("No response generated."))
         return
 
-      is_valid = False
-      error_message = ""
-      json_string_cleaned = "[]"
-      text_part = final_response_content
-
-      if "---a2ui_JSON---" not in final_response_content:
-        is_valid = True
-        json_string_cleaned = None
-      else:
-        try:
-          import re
-          text_part, json_string = final_response_content.split("---a2ui_JSON---", 1)
-          logger.info("=== RAW JSON FROM LLM ===")
-          logger.info(json_string)
-          logger.info("=========================")
-          
-          match = re.search(r'(?:```(?:json)?\s*)?([\[\{][\s\S]*[\]\}])', json_string.strip())
-          if match:
-              json_string_cleaned = match.group(1).strip()
-          else:
-              json_string_cleaned = json_string.strip().lstrip("```json").rstrip("```").strip()
-
-          if not json_string_cleaned: json_string_cleaned = "[]"
-          parsed_json = json.loads(json_string_cleaned)
-          
-          is_custom_view = False
-          if isinstance(parsed_json, dict) and "CustomView" in parsed_json:
-             is_custom_view = True
-          elif isinstance(parsed_json, list):
-             for item in parsed_json:
-                 if isinstance(item, dict) and "CustomView" in item:
-                     is_custom_view = True
-                     break
-
-          if self.a2ui_schema_object and not is_custom_view:
-            jsonschema.validate(instance=parsed_json, schema=self.a2ui_schema_object)
-
-          is_valid = True
-        except Exception as e:
-          error_message = f"Validation failed: {str(e)}"
-
-      if is_valid:
-        parts = []
-        if text_part.strip():
-          parts.append(types.Part(root=types.TextPart(text=text_part.strip())))
-
-        if json_string_cleaned:
-            json_data = json.loads(json_string_cleaned)
-            processed_data = json_data
-            
-            target_view = None
-            if isinstance(json_data, dict) and "CustomView" in json_data:
-                target_view = json_data["CustomView"]
-            elif isinstance(json_data, list):
-                for item in json_data:
-                    if isinstance(item, dict) and "CustomView" in item:
-                        target_view = item["CustomView"]
-                        break
-                    elif isinstance(item, dict) and "surfaceUpdate" in item:
-                        for component in item["surfaceUpdate"].get("components", []):
-                            if "DataGrid" in component.get("component", {}):
-                                datagrid_data = component["component"]["DataGrid"]
-                                target_view = {
-                                    "template": "table",
-                                    "data": {
-                                        "columns": datagrid_data.get("columns", []),
-                                        "rows": datagrid_data.get("rows", [])
-                                    }
-                                }
-                                break
-                        if target_view:
-                            break
-
-            if target_view:
-                logger.info(f"[DEBUG] CustomView intercepted triggering template {target_view.get('template')}")
-                
-                view_data = target_view.get("data", {})
-                if "theme" in target_view:
-                    view_data["theme"] = target_view["theme"]
-                    
-                processed_data = self._build_webframe(
-                    view_data, 
-                    target_view.get("template", "dashboard")
-                )
-
-            logger.info("=== PROCESSED JSON FOR FRONTEND ===")
-            logger.info(json.dumps(processed_data, indent=2))
-            logger.info("===================================")
-            
-            if isinstance(processed_data, list):
-              new_surface_id = "s-" + str(uuid.uuid4())[:8]
-              for message in processed_data:
-                if "beginRendering" in message and "surfaceId" in message["beginRendering"]:
-                  message["beginRendering"]["surfaceId"] = new_surface_id
-                if "surfaceUpdate" in message and "surfaceId" in message["surfaceUpdate"]:
-                  message["surfaceUpdate"]["surfaceId"] = new_surface_id
-
-              for message in processed_data:
-                parts.append(types.Part(root=types.DataPart(data=message, metadata={"mimeType": "application/json+a2ui"})))
-            else:
-              parts.append(types.Part(root=types.DataPart(data=processed_data, metadata={"mimeType": "application/json+a2ui"})))
-
+      parts, success = self._process_response_content(final_response_content, self._cached_ui_payload)
+      
+      if success:
         await updater.add_artifact(parts, name="response")
         await updater.complete()
+        # Clear cache for next execution
+        self._cached_ui_payload = None
         return
-
       else:
+        error_message = "Validation failed or malformed JSON"
         if attempt <= max_retries:
           current_query_text = f"Previous invalid response: {error_message}. Retry request: '{query}'"
           continue
         else:
           await updater.add_artifact([types.Part(root=types.TextPart(text=f"UI Error: {error_message}"))], name="error")
           await updater.complete()
+          self._cached_ui_payload = None
           return
 
   async def cancel(self, context: agent_execution.RequestContext, event_queue: events.EventQueue) -> None:

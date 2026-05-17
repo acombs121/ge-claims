@@ -48,16 +48,9 @@ NATIVE_VEGACHART_EXAMPLE = """
         {
           "id": "root-chart",
           "component": {
-            "VegaChart": {
-              "spec": {
-                "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-                "width": "container",
-                "height": "container",
-                "autosize": {"type": "fit", "contains": "padding"},
-                "mark": "bar",
-                "data": {"values": [{"a": "A", "b": 28}]},
-                "encoding": {"x": {"field": "a", "type": "nominal"}, "y": {"field": "b", "type": "quantitative"}}
-              }
+            "DataGrid": {
+              "columns": [{"field": "id", "headerName": "ID"}],
+              "rows": []
             }
           }
         }
@@ -187,17 +180,56 @@ MAP_EXAMPLE = """
 ---BEGIN MAP_EXAMPLE---
 {
   "CustomView": {
-    "template": "map",
+    "template": "sales_map",
     "data": {
-      "center": [37.422, -122.084],
+      "center": [42.3601, -71.0589],
       "zoom": 12,
-      "markers": [
-        {"lat": 37.422, "lng": -122.084, "title": "HQ", "desc": "Mountain View", "open": true}
-      ]
+      "heatmap_points": [
+        [42.3601, -71.0589, 0.8],
+        [42.3584, -71.0597, 0.2]
+      ],
+      "routes": {
+        "shortest_distance": {
+          "coordinates": [[42.3601, -71.0589], [42.3584, -71.0597]],
+          "distance": "5.2 miles",
+          "duration": "15 mins"
+        }
+      }
     }
   }
 }
 ---END MAP_EXAMPLE---
+"""
+
+WEBFRAME_LEAFLET_EXAMPLE = r"""
+---BEGIN WEBFRAME_LEAFLET_EXAMPLE---
+[
+  {
+    "beginRendering": {
+      "surfaceId": "canvas-surface",
+      "root": "root-map"
+    }
+  },
+  {
+    "surfaceUpdate": {
+      "surfaceId": "canvas-surface",
+      "components": [
+        {
+          "id": "root-map",
+          "component": {
+            "WebFrame": {
+              "htmlContent": {
+                "literalString": "<!DOCTYPE html><html><head><link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\" /><script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"></script><style>#map \u007b height: 400px; width: 100%; \u007d</style><script>window.INJECTED_DATA = \u007b\"center\": [42.3601, -71.0589], \"zoom\": 12, \"markers\": [\u007b\"lat\": 42.3601, \"lng\": -71.0589, \"title\": \"Boston HQ\"\u007d]\u007d;</script></head><body><div id=\"map\"></div><script>function init() \u007b const data = window.INJECTED_DATA || \u007b\u007d; const map = L.map('map').setView(data.center, data.zoom); L.tileLayer('https://\u007bs\u007d.basemaps.cartocdn.com/light_all/\u007bz\u007d/\u007bx\u007d/\u007by\u007d\u007br\u007d.png').addTo(map); (data.markers || []).forEach(m => \u007b L.marker([m.lat, m.lng]).addTo(map).bindPopup(m.title); \u007d); \u007d window.addEventListener('load', init);</script></body></html>"
+              },
+              "height": 400
+            }
+          }
+        }
+      ]
+    }
+  }
+]
+---END WEBFRAME_LEAFLET_EXAMPLE---
 """
 
 # ------------------------------------------------------------------------------
@@ -218,7 +250,8 @@ def get_ui_instruction(base_instruction: str) -> str:
     --- PAYLOAD TYPE RULES ---
     -   If the user asks for JUST a table, return a Native A2UI Array containing a `DataGrid` component.
     -   If the user asks for JUST a chart, return a Native A2UI Array containing a `VegaChart` component.
-    -   If the user asks for a comprehensive multi-metric dashboard or a map, return a `CustomView` object.
+    -   If the user asks for a map with routes, markers, or heatmap, return a `CustomView` object utilizing the `sales_map` template (see example below).
+    -   If the user asks for a comprehensive multi-metric dashboard, return a `CustomView` object.
     -   If the user explicitly asks for a form or submission interface, return a `CustomView` dashboard object with a `form` type panel in its grid to ensure a premium UI.
     -   If the user asks for network graphs, node-edge connections, or relationships, return a `CustomView` dashboard object utilizing the `d3-network` type panel in its grid instead of native Vega.
     -   If the user asks for a geo-based heatmap (radial hotspots, density maps), return a `CustomView` dashboard object utilizing the `map-heatmap` type panel in its grid instead of native Vega or HexBins.
@@ -230,6 +263,9 @@ def get_ui_instruction(base_instruction: str) -> str:
 
     Native VegaChart Example:
     {NATIVE_VEGACHART_EXAMPLE}
+
+    WebFrame Leaflet Map Example:
+    {WEBFRAME_LEAFLET_EXAMPLE}
 
     CustomView Dashboard Example:
     {CUSTOMVIEW_DASHBOARD_EXAMPLE}

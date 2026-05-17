@@ -1,0 +1,47 @@
+{
+  "EMP001": {
+    "review_period": "2025 Annual",
+    "overall_rating": "Exceeds Expectations",
+    "feedback_summary": "John has demonstrated exceptional leadership in delivering the core platform services. He has been proactive in resolving complex technical issues and mentoring junior team members.",
+    "competencies": {
+      "labels": ["Leadership", "Delivery", "Mentorship", "Innovation", "Communication"],
+      "data": [4.5, 4.0, 4.5, 4.0, 4.0]
+    },
+    "feedback_details": {
+      "strengths": [
+        "Strong technical leadership and architectural vision.",
+        "Effective communication across cross-functional teams.",
+        "Commitment to mentoring and team growth."
+      ],
+      "areas_for_growth": [
+        "Could delegate more to empower senior engineers.",
+        "Continue to focus on long-term strategic planning versus immediate deliverables."
+      ]
+    },
+    "performance_metrics": {
+      "labels": ["Q1", "Q2", "Q3", "Q4"],
+      "data": [85, 82, 90, 88]
+    }
+  },
+  "EMP003": {
+    "employee_id": "EMP003",
+    "employee_name": "Bob Jones",
+    "review_period": "2025 Annual",
+    "overall_rating": "Meets Expectations",
+    "feedback_summary": "Bob has been a solid contributor to the team, delivering tasks on time and showing good knowledge of the codebase. He needs to focus on taking more ownership of complex features and improving communication with cross-functional teams.",
+    "competencies": {
+      "labels": ["Leadership", "Delivery", "Mentorship", "Innovation", "Communication"],
+      "data": [3.0, 4.0, 3.0, 3.5, 3.0]
+    },
+    "feedback_details": {
+      "strengths": [
+        "Solid delivery of assigned tasks.",
+        "Good understanding of core systems."
+      ],
+      "areas_for_growth": [
+        "Take more ownership of complex features.",
+        "Proactively communicate status and blockers."
+      ]
+    }
+  }
+}

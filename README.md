@@ -1,42 +1,69 @@
-# GE A2UI Agent Seed Project (Acme Corp)
+# Aon HR Agent
 
-This repository serves as a generic, reusable **"seed"** for building Gemini Enterprise (GE) agents that leverage the **A2UI (Agent-to-Agent User Interface)** engine. It comes pre-configured with industry-agnostic widgets and clean, minimalist styling.
+This repository serves as a customized instance of the Gemini Enterprise (GE) agent template, tailored for the **Aon** HR use case. It leverages the **A2UI (Agent-to-Agent User Interface)** engine to demonstrate secure, AI-driven HR self-service and performance review synthesis, simulating integration with Workday.
 
----
+It's an A2UI-enabled ADK agent that can be deployed to Cloud Run and integrated into Gemini Enterprise.
 
-## 🏗️ Architecture
-
-The seed project uses a **Server-Side Rendering (SSR)** approach for A2UI components:
-
-1.  **Agent Orchestration**: The AI agent (Gemini) generates a `CustomView` JSON structure.
-2.  **Template Injection**: The Python backend (`main.py`) reads modular HTML from `backend/templates/`, injects data from the tool context into `window.INJECTED_DATA`, and serves it via a `WebFrame`.
-3.  **Cross-App Actions**: Supports bi-directional communication between the agent and external apps via `a2a.action` event triggers.
+Given that deployment takes 10+ minutes, we use `adk-web-react` to test locally before deploying.
 
 ---
 
-## 📂 Project Structure
+## Architecture
 
--   `backend/templates/dashboard.html`: The core A2UI engine. Supports dynamic rendering of:
-    -   `map-heatmap`: Integrated Google Maps with density layers.
-    -   `d3-network`: Force-directed relationship graphs.
-    -   `simulator`: Interactive logic-bound tradeoff modeling.
-    -   `action-plan`: A generic, editable form-to-sync workflow.
--   `backend/agent.py`: Generic system instructions and tool routing for **Acme Corp**.
--   `backend/mock_data_tool.py`: Industry-agnostic data generators (Revenue, Growth, Regions).
+For a detailed breakdown of the architecture and design patterns, please refer to [architecture.md](file:///Users/rtejada/Workspace/aon-hr-agent/architecture.md).
+
+The project uses a custom executor, `AdkAgentToA2AExecutor` (found in `backend/agent_executor.py`), to bridge the ADK agent with the A2UI rendering engine.
+
+### The Execution Flow
+1. **Inference & Tool Execution**: The agent processes queries and calls tools normally.
+2. **A2UI Interception**: The executor checks the agent's response for the delimiter `---a2ui_JSON---`.
+3. **CustomView Routing**: 
+   - If the extracted JSON contains a `"CustomView"` object, the executor reads the corresponding template from `backend/templates/{template}.html`.
+   - It injects the tool data into `window.INJECTED_DATA` within the HTML.
+   - It wraps the full HTML in a `WebFrameSrcdoc` component for Native A2UI rendering.
+4. **Fallback**: If the JSON does not contain `CustomView`, it validates against the strict A2UI schema and renders standard components (like `DataGrid` or `VegaChart`).
+
+### Active Templates Mapping
+| Template Name | Description | Active Tools |
+| :--- | :--- | :--- |
+| `dashboard` | The core A2UI engine for complex dashboards (Chart.js, D3, etc.) | `get_org_chart()` |
+| `workday_portal` | The custom high-fidelity Workday shell supporting Radar charts | `get_hr_portal_overview()`, `get_performance_reviews()` |
+
+### ⚡ Deterministic UI Advantage
+To eliminate LLM hallucination and trailing comma syntax errors, the `AdkAgentToA2AExecutor` intercepts backend Python tool responses directly. If a tool returns an A2UI list or a CustomView dictionary, the system bypasses the LLM's character-by-character text reproduction. It automatically injects valid, schema-adhering JSON payloads as native `DataPart` objects with mimeType `application/json+a2ui`.
+
+### 🛠️ Local Development Fallbacks
+To support iterating without touching production Cloud Run settings or running into locked Google Cloud Storage bucket permission errors, the backend respects a strict environment check:
+* If the environment variable `K_SERVICE` is absent, media endpoints automatically write generated assets directly to a local directory (`backend/data/media_cache/`) instead of GCS.
+* Mock data is read from local JSON files in `backend/data/` to simulate external systems like Workday.
+
+### 📤 Asset Staging (`upload_logos.py`)
+To ensure images and logos are accessible by Gemini Enterprise, use the provided script to stage local assets in GCS:
+```bash
+python3 backend/upload_logos.py
+```
+This script uploads files from `backend/data/logos/` to the project's media cache bucket. This serves as a reusable pattern for any project requiring GCS asset staging.
 
 ---
 
-## 🚀 Getting Started
+## Project Structure
 
-### 1. Clone & Customize
-Clone this repository and replace "Acme Corp" with your client's name in `agent.py` and `mock_data_tool.py`.
+-   `backend/templates/dashboard.html`: The core A2UI engine supporting `d3-network` and charts.
+-   `backend/agent.py`: System instructions and tool routing (HR Persona).
+-   `backend/hr_data.py`: Data generators and state management mocking Workday data.
 
-### 2. Configure Google Maps
-To use the heatmap widget:
-- Enable the **Maps JavaScript API**.
-- Update the API Key in `backend/templates/dashboard.html`.
+---
 
-### 3. Deploy to Cloud Run
+## Getting Started
+
+### 1. Run Locally
+```bash
+cd backend
+python3 main.py
+```
+Then use `adk-web-react` to connect to `http://127.0.0.1:8080`.
+
+### 2. Deploy to Cloud Run
 ```bash
 cd backend
 ./deploy.sh <YOUR_PROJECT_ID> <SERVICE_NAME>
@@ -44,32 +71,42 @@ cd backend
 
 ---
 
-## 🧩 A2UI Widget Specifications
+## A2UI Widget Specifications Used
 
-### Map Heatmap
-Plot density or hotspots with interactive tooltips.
-- **Data Type**: `map-heatmap`
-- **Fields**: `lat`, `lng`, `weight`, `entity_name`, `tooltip`.
-
-### D3 Relationship Graph
-Visualize complex node-edge connectivity with physics clamping.
+### D3 Relationship Graph (Org Chart)
+Visualize complex node-edge connectivity. Used to show the security boundary in the HR portal.
 - **Data Type**: `d3-network`
-- **Fields**: `id`, `label`, `color`, `radius`, `external_id`.
+- **Fields**: `id`, `label`, `color`, `radius`.
 
-### Scenario Simulator
-Model tradeoffs with interactive sliders and non-linear logic.
-- **Data Type**: `simulator`
-- **Variables**: Fully customizable sliders.
-- **Logic**: Injected via Javascript `onUpdateBody`.
-
-### Action Plan
-Bridge conversational planning into deterministic execution.
-- **Data Type**: `action-plan`
-- **Actions**: Packages form state into a `COMMIT_ACTION_PLAN` payload.
+### Vega Chart (Performance Trends)
+Native declarative animated visualizations.
+- **Data Type**: `VegaChart`
+- **Spec**: Vega-Lite JSON specification.
 
 ---
 
-## 🛡️ Security & Best Practices
-- **Allowlisting**: Always ensure your Cloud Run service URL is allowlisted in your GE Organization settings.
-- **OAuth 2.0**: For multi-tenant production agents, refer to the `OAuth Register` guide in the root directory.
-- **Least Privilege**: Grant only `roles/aiplatform.user` to the service account.
+## HR Agent Demo Queries
+
+Use these queries to run the demo flow:
+
+1. how many vacation days do I have left?
+
+2. let's look at my HR portal
+
+3. Enroll me in the Commuter Benefit
+
+4. help me prepare for Bob's performance review
+
+5. generate a team skill matrix graphic
+
+---
+
+## Unexplored A2UI Standard Capabilities
+
+These standard components are available in the schema (`a2ui_schema_full.py`) and work out-of-the-box without needing custom HTML templates:
+
+* **`Tabs`**: Organize complex dashboards into multiple logical views.
+* **`Modals`**: Bind popups to buttons to show rich contextual overlays.
+* **`TextFields`**: Supports date, number, and secured inputs.
+* **`Sliders`**: Perfect for numerical range tuning.
+* **`DateTimeInput`**: Native date/time picker.
