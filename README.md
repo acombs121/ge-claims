@@ -15,13 +15,33 @@ For a detailed breakdown of the architecture and design patterns, please refer t
 The project uses a custom executor, `AdkAgentToA2AExecutor` (found in `backend/agent_executor.py`), to bridge the ADK agent with the A2UI rendering engine.
 
 ### The Execution Flow
-1. **Inference & Tool Execution**: The agent processes queries and calls tools normally.
-2. **A2UI Interception**: The executor checks the agent's response for the delimiter `---a2ui_JSON---`.
-3. **CustomView Routing**: 
-   - If the extracted JSON contains a `"CustomView"` object, the executor reads the corresponding template from `backend/templates/{template}.html`.
-   - It injects the tool data into `window.INJECTED_DATA` within the HTML.
-   - It wraps the full HTML in a `WebFrameSrcdoc` component for Native A2UI rendering.
-4. **Fallback**: If the JSON does not contain `CustomView`, it validates against the strict A2UI schema and renders standard components (like `DataGrid` or `VegaChart`).
+The system operates a dual-tier orchestration architecture managed by `AdkAgentToA2AExecutor` (found in `backend/agent_executor.py`) in conjunction with `demo_manifest.json`:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant A2A_Executor
+    participant LLM_Agent
+    participant Python_Tools
+    participant Client_UI
+
+    User->>A2A_Executor: Incoming Query
+    alt Tier 1: Exact Manifest Match
+        A2A_Executor->>Python_Tools: Execute Mapped Tool Directly
+        Python_Tools-->>A2A_Executor: Raw Data Dict
+        A2A_Executor->>Client_UI: Emit Instant A2UI Card (Zero LLM Latency)
+    else Tier 2: LLM Fallback Turn
+        A2A_Executor->>LLM_Agent: Pass Query for Semantic Tool Selection
+        LLM_Agent->>Python_Tools: Invoke Tool via SDK
+        Note over Python_Tools,A2A_Executor: Tool Wrapper captures dict into self._last_tool_data
+        Python_Tools-->>LLM_Agent: Observation to LLM
+        LLM_Agent-->>A2A_Executor: Final Text Response
+        A2A_Executor->>Client_UI: Inspect Manifest & Pass In-Memory Data to UI Mapper
+    end
+```
+
+1. **Tier 1 (Fast-Path Interception)**: When an incoming query exactly matches a manifest trigger substring (ignoring punctuation), the server bypasses the LLM, executes the mapped Python tool synchronously, and instantly emits the designated UI card.
+2. **Tier 2 (In-Memory Data Capture on LLM Fallback)**: When a query misses manifest triggers, it proceeds to the LLM for semantic tool selection. All Python tools are wrapped at initialization; as any tool executes during the LLM turn, its raw data dictionary is captured directly into backend memory (`self._last_tool_data`). During payload packaging, the server matches the active tool against the manifest and passes the captured data directly to the designated UI mapper, guaranteeing flawless, zero-overhead UI hydration.
 
 ### Active Templates Mapping
 | Template Name | Description | Active Tools |
