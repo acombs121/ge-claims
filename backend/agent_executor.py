@@ -58,6 +58,8 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
     self._cached_ui_payload = None
     self._last_tool_name = None
     self._last_tool_data = None
+    self._session_active_tool = {}
+    self._session_active_data = {}
 
     wrapped_tools = []
     for t in getattr(self._agent, 'tools', []):
@@ -83,8 +85,9 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
           @wraps(tool_func)
           async def async_wrapper(*args, **kwargs):
               res = await tool_func(*args, **kwargs)
-              self._executed_tool_name = tool_name
-              self._executed_tool_data = res
+              session_id = getattr(self, '_current_session_id', 'default')
+              self._session_active_tool[session_id] = tool_name
+              self._session_active_data[session_id] = res
               self._last_tool_name = tool_name
               self._last_tool_data = res
               return res
@@ -93,8 +96,9 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
           @wraps(tool_func)
           def sync_wrapper(*args, **kwargs):
               res = tool_func(*args, **kwargs)
-              self._executed_tool_name = tool_name
-              self._executed_tool_data = res
+              session_id = getattr(self, '_current_session_id', 'default')
+              self._session_active_tool[session_id] = tool_name
+              self._session_active_data[session_id] = res
               self._last_tool_name = tool_name
               self._last_tool_data = res
               return res
@@ -220,9 +224,10 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
           parts.append(types.Part(root=types.TextPart(text=text_part.strip())))
 
         processed_data = None
-        active_tool = getattr(self, '_executed_tool_name', None)
+        session_id = getattr(self, '_current_session_id', 'default')
+        active_tool = self._session_active_tool.get(session_id)
         if active_tool == 'tool': active_tool = None
-        active_data = getattr(self, '_executed_tool_data', None)
+        active_data = self._session_active_data.get(session_id)
         
         json_data = {}
         if json_string_cleaned:
@@ -414,11 +419,10 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
         
     updater = tasks.TaskUpdater(event_queue, task.id, task.context_id)
     session_id = task.context_id
+    self._current_session_id = session_id
     
     self._last_tool_name = None
     self._last_tool_data = None
-    self._executed_tool_name = None
-    self._executed_tool_data = None
     
     # Intercept Action Check
     intercepted_parts = await self._handle_intercepted_action(query)
