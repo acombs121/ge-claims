@@ -46,8 +46,8 @@ sequenceDiagram
 ### Active Templates Mapping
 | Template Name | Description | Active Tools |
 | :--- | :--- | :--- |
-| `dashboard` | The core A2UI engine for complex dashboards (Chart.js, D3, etc.) | `get_org_chart()` |
-| `workday_portal` | The custom high-fidelity Workday shell supporting Radar charts | `get_hr_portal_overview()`, `get_performance_reviews()` |
+| `workday_portal` | The custom high-fidelity Workday shell supporting D3 and Radar charts | `get_hr_portal_overview()`, `get_performance_reviews()` |
+| `universal_dashboard` | The secure, branded container for general widgets | General fallback or custom views |
 
 ### ⚡ Deterministic UI Advantage
 To eliminate LLM hallucination and trailing comma syntax errors, the `AdkAgentToA2AExecutor` intercepts backend Python tool responses directly. If a tool returns an A2UI list or a CustomView dictionary, the system bypasses the LLM's character-by-character text reproduction. It automatically injects valid, schema-adhering JSON payloads as native `DataPart` objects with mimeType `application/json+a2ui`.
@@ -68,9 +68,10 @@ This script uploads files from `backend/data/logos/` to the project's media cach
 
 ## Project Structure
 
--   `backend/templates/dashboard.html`: The core A2UI engine supporting `d3-network` and charts.
+-   `backend/templates/workday_portal.html`: The custom high-fidelity Workday shell supporting D3 and Radar charts.
 -   `backend/agent.py`: System instructions and tool routing (HR Persona).
 -   `backend/hr_data.py`: Data generators and state management mocking Workday data.
+-   `backend/component_library.py` & `component_mappers.py`: Native A2UI component generators and pure data mappers.
 
 ---
 
