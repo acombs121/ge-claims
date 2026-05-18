@@ -303,12 +303,21 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
   async def _handle_intercepted_action(self, query: str) -> list:
       """Intercepts specific user actions and handles them deterministically."""
       steps = self._manifest.get("steps", [])
+      import re
       for step in steps:
           triggers = step.get("trigger_queries", [])
           for trigger in triggers:
               clean_q = query.lower().replace('?', '').replace('.', '').replace('!', '').strip()
               clean_t = trigger.lower().replace('?', '').replace('.', '').replace('!', '').strip()
-              if clean_t in clean_q:
+              
+              match = clean_t in clean_q
+              if not match:
+                  t_words = [w.rstrip('s') for w in re.findall(r'\w+', clean_t) if len(w) > 2]
+                  q_words = [w.rstrip('s') for w in re.findall(r'\w+', clean_q) if len(w) > 2]
+                  if t_words and all(tw in q_words for tw in t_words):
+                      match = True
+                      
+              if match:
                   logger.info(f"[DEBUG] Intercepted query '{query}' matching trigger '{trigger}'")
                   action_tool = step.get("action_tool")
                   output_template = step.get("output_template")

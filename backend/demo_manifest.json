@@ -4,7 +4,9 @@
       "phase": 1,
       "trigger_queries": [
         "how many vacation days do I have left?",
-        "check my vacation"
+        "check my vacation",
+        "vacation day left",
+        "vacation balance"
       ],
       "action_tool": "get_benefits_summary",
       "output_mode": "native",
@@ -14,7 +16,8 @@
       "phase": 2,
       "trigger_queries": [
         "let's look at my HR portal",
-        "show my portal"
+        "show my portal",
+        "hr portal"
       ],
       "action_tool": "get_hr_portal_overview",
       "output_mode": "iframe",
