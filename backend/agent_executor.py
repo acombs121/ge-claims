@@ -268,19 +268,6 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                       else:
                           if isinstance(item, (dict, list)): normalize_ast(item, c_list)
 
-          # Automatically resolve hallucinated tool calls inside model JSON strings
-          if isinstance(parsed_json, dict) and len(parsed_json) == 1:
-              t_name = list(parsed_json.keys())[0]
-              if t_name.startswith("render_ui_"):
-                  args = parsed_json[t_name]
-                  import ui_generators
-                  t_func = getattr(ui_generators, t_name, None)
-                  if t_func and isinstance(args, dict):
-                      try:
-                          parsed_json = t_func(**args)
-                      except Exception as e:
-                          logger.error(f"Error resolving hallucinated tool {t_name}: {e}")
-
           if isinstance(parsed_json, dict) and "component" in parsed_json and isinstance(parsed_json["component"], dict):
               parsed_json = parsed_json["component"]
 

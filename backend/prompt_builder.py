@@ -239,42 +239,20 @@ def get_ui_instruction(base_instruction: str) -> str:
     return f"""
     {base_instruction}
 
-    If relevant to the user's request, append an A2UI JSON payload to generate interactive widgets. But if it's not relevant, just answer the question concisely.
-
-    If the user's request requires a Native UI array or CustomView widget, you MUST follow these rules:
-    1.  Your response MUST be in two parts, separated by the delimiter: `---a2ui_JSON---`.
-    2.  The first part is your conversational text response in Markdown format.
-    3.  The second part is a JSON payload.
-    4.  If the user is only asking for text, standard links, or a PDF document, DO NOT output the delimiter or the JSON payload.
-
-    --- PAYLOAD TYPE RULES ---
-    -   If the user asks for JUST a table, return a Native A2UI Array containing a `DataGrid` component.
-    -   If the user asks for JUST a chart, return a Native A2UI Array containing a `VegaChart` component.
-    -   If the user asks for a map with routes, markers, or heatmap, return a `CustomView` object utilizing the `sales_map` template (see example below).
-    -   If the user asks for a comprehensive multi-metric dashboard, return a `CustomView` object.
-    -   If the user explicitly asks for a form or submission interface, return a `CustomView` dashboard object with a `form` type panel in its grid to ensure a premium UI.
-    -   If the user asks for network graphs, node-edge connections, or relationships, return a `CustomView` dashboard object utilizing the `d3-network` type panel in its grid instead of native Vega.
-    -   If the user asks for a geo-based heatmap (radial hotspots, density maps), return a `CustomView` dashboard object utilizing the `map-heatmap` type panel in its grid instead of native Vega or HexBins.
-    -   IMPORTANT: Do NOT output the static dummy data exactly as shown in the examples below! You must completely extract and inject the real tool data into the JSON rows, columns, and spec objects.
-    -   CRITICAL: ONLY generate the structure specifically targeted for the user's intent. Do not generate a `DataGrid` if asked for a `Map`.
-
-    Native DataGrid Example:
-    {NATIVE_DATAGRID_EXAMPLE}
-
-    Native VegaChart Example:
-    {NATIVE_VEGACHART_EXAMPLE}
-
-    WebFrame Leaflet Map Example:
-    {WEBFRAME_LEAFLET_EXAMPLE}
-
-    CustomView Dashboard Example:
-    {CUSTOMVIEW_DASHBOARD_EXAMPLE}
-
-    CustomView Map Example:
-    {MAP_EXAMPLE}
-
-    Conversational / PDF Negative Example:
-    [If user asks "What time is it?" or "Show me a PDF"]
-    "The current time is 10:00 AM." or "Here is the PDF: [Link](url)"
-    [CRITICAL: Notice that NO ---a2ui_JSON--- block is printed here!]
+    ### CRITICAL PLATFORM RULES (100% TOOL-DRIVEN GENERATION):
+    - You are running in a strict **Tool-Driven UI Generation** environment.
+    - You must **NEVER** manually write raw JSON string blocks or output `---a2ui_JSON---` delimiters inside your conversational responses. Doing so will break the client parser.
+    - If the user asks for *any* interactive visual component, widget, layout, or media summary, you **MUST EXCLUSIVELY CALL THE APPROPRIATE TOOL** in your function calling payload.
+    - Do not mock or output JSON text under any circumstances. Just invoke the tool with the correct parameters.
+    
+    #### AD-HOC VISUAL MAPPINGS:
+    - **Button**: If asked for a button, call `render_ui_button(label, action_name)`.
+    - **Dropdown Picker / Choice menu**: If asked for a dropdown or options list, call `render_ui_dropdown(title, options)`.
+    - **Checkbox list / Checklist**: If asked for checkboxes, call `render_ui_checkbox(labels)`.
+    - **Interactive Table / Grid**: If asked for a table, call `render_ui_table(headers, rows)`.
+    - **Information Card**: If asked for a card, call `render_ui_card(title, body_text)`.
+    - **Multi-View Tabs strip**: If asked for tabs, call `render_ui_tabs(tab_titles, tab_contents)`.
+    - **Modal dialog popup**: If asked for a modal trigger, call `render_ui_modal(button_label, modal_title, modal_content)`.
+    - **Audio Podcast Summary**: If asked for an audio summary, call `generate_audio_summary(context_summary)`.
+    - **HR Skill Graphic**: If asked for a skill matrix graphic, call `generate_hr_graphic(prompt)`.
     """
