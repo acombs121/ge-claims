@@ -255,6 +255,30 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                 if "theme" in target_view: view_data["theme"] = target_view["theme"]
                 llm_explicit_ui = self._build_webframe(view_data, target_view.get("template", "dashboard"))
             elif isinstance(json_data, list) or (isinstance(json_data, dict) and any(k in json_data for k in ["beginRendering", "surfaceUpdate"])):
+                def normalize_ast(obj, c_list=None):
+                    if isinstance(obj, dict):
+                        if "Text" in obj and isinstance(obj["Text"], dict):
+                            t_node = obj["Text"]
+                            if "text" not in t_node and "literalString" in t_node:
+                                t_node["text"] = {"literalString": t_node.pop("literalString")}
+                        if "Button" in obj and isinstance(obj["Button"], dict):
+                            b_node = obj["Button"]
+                            if "child" not in b_node and "label" in b_node and c_list is not None:
+                                lbl = b_node.pop("label")
+                                l_str = lbl.get("literalString", "Button") if isinstance(lbl, dict) else str(lbl)
+                                b_node["child"] = "btn_child_txt"
+                                c_list.append({"id": "btn_child_txt", "component": {"Text": {"text": {"literalString": l_str}, "usageHint": "body"}}})
+                        for v in obj.values():
+                            normalize_ast(v, c_list)
+                    elif isinstance(obj, list):
+                        for item in obj:
+                            if isinstance(item, dict) and "surfaceUpdate" in item and isinstance(item["surfaceUpdate"], dict):
+                                comps = item["surfaceUpdate"].get("components", [])
+                                if isinstance(comps, list):
+                                    for c in comps: normalize_ast(c, comps)
+                            else:
+                                normalize_ast(item, c_list)
+                normalize_ast(json_data)
                 llm_explicit_ui = json_data
                 
         manifest_handled = False
