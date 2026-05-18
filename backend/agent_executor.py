@@ -266,7 +266,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
           is_custom_view = has_custom_view(parsed_json)
 
           if self.a2ui_schema_object and not is_custom_view and not cached_ui_payload:
-              if not (isinstance(parsed_json, dict) and any(k in parsed_json for k in ["vacation", "success", "src", "title", "grid"])):
+              if isinstance(parsed_json, list):
                   import jsonschema
                   jsonschema.validate(instance=parsed_json, schema=self.a2ui_schema_object)
 
