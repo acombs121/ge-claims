@@ -196,8 +196,8 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
           if not json_string_cleaned: json_string_cleaned = "[]"
           parsed_json = json.loads(json_string_cleaned)
            
-          native_keys = ["Button", "Card", "Text", "Column", "Row", "List", "Tabs", "Modal", "AudioPlayer", "Divider", "Icon", "Image", "Video"]
-           
+          native_keys = ["Button", "Card", "Text", "Column", "Row", "List", "Tabs", "Modal", "AudioPlayer", "Divider", "Icon", "Image", "Video", "MultipleChoice", "CheckBox"]
+            
           def normalize_ast(obj, c_list=None):
               if isinstance(obj, dict):
                   if "Text" in obj and isinstance(obj["Text"], dict):
@@ -213,20 +213,50 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                           l_str = lbl.get("literalString", "Button") if isinstance(lbl, dict) else str(lbl)
                           b_node["child"] = "btn_child_txt"
                           c_list.append({"id": "btn_child_txt", "component": {"Text": {"text": {"literalString": l_str}, "usageHint": "body"}}})
-                  if any(k in obj for k in ["Select", "Dropdown", "DropdownMenu"]):
-                      sel = obj.pop("Select", None) or obj.pop("Dropdown", None) or obj.pop("DropdownMenu", None)
+                  
+                  # Normalize Dropdown/Select to native MultipleChoice picker
+                  if any(k in obj for k in ["Select", "Dropdown", "DropdownMenu", "MultipleChoice"]):
+                      sel = obj.pop("Select", None) or obj.pop("Dropdown", None) or obj.pop("DropdownMenu", None) or obj.pop("MultipleChoice", None)
                       opts = sel.get("options", ["Option A", "Option B"]) if isinstance(sel, dict) else ["Option A", "Option B"]
                       if isinstance(opts, dict) and "explicitList" in opts: opts = opts["explicitList"]
+                      opt_nodes = []
+                      if isinstance(opts, list):
+                          for opt in opts:
+                              opt_str = opt.get("literalString", str(opt)) if isinstance(opt, dict) else str(opt)
+                              opt_nodes.append({"literalString": opt_str})
+                      obj["MultipleChoice"] = {
+                          "options": opt_nodes,
+                          "selected": []
+                      }
+
+                  # Normalize Checkbox/Checkboxes lists to a Column of native CheckBox elements
+                  if any(k in obj for k in ["CheckBox", "checkbox", "Checkboxes", "checkboxes"]):
+                      chk = obj.pop("CheckBox", None) or obj.pop("checkbox", None) or obj.pop("Checkboxes", None) or obj.pop("checkboxes", None)
+                      labels = []
+                      if isinstance(chk, dict):
+                          if "labels" in chk: labels = chk["labels"]
+                          elif "boxes" in chk: labels = [b.get("label", "Option") for b in chk["boxes"]]
+                          elif "label" in chk: labels = [chk["label"]]
+                      else:
+                          labels = ["Option"]
+                      
                       child_ids = []
-                      if c_list is not None and isinstance(opts, list):
-                          for idx, opt in enumerate(opts):
-                              opt_str = opt.get("literalString", f"Option {idx+1}") if isinstance(opt, dict) else str(opt)
-                              b_id = f"sel_btn_{idx}"
-                              t_id = f"sel_txt_{idx}"
-                              child_ids.append(b_id)
-                              c_list.append({"id": b_id, "component": {"Button": {"child": t_id, "action": {"name": "select_option", "context": [{"id": f"opt_{idx}"}]}}}})
-                              c_list.append({"id": t_id, "component": {"Text": {"text": {"literalString": opt_str}, "usageHint": "body"}}})
+                      if c_list is not None and isinstance(labels, list):
+                          for idx, lbl in enumerate(labels):
+                              lbl_str = lbl.get("literalString", str(lbl)) if isinstance(lbl, dict) else str(lbl)
+                              chk_id = f"auto_chk_{idx}"
+                              child_ids.append(chk_id)
+                              c_list.append({
+                                  "id": chk_id,
+                                  "component": {
+                                      "CheckBox": {
+                                          "label": {"literalString": lbl_str},
+                                          "checked": False
+                                      }
+                                  }
+                              })
                       obj["Column"] = {"children": {"explicitList": child_ids}}
+
                   for v in list(obj.values()):
                       if isinstance(v, (dict, list)): normalize_ast(v, c_list)
               elif isinstance(obj, list):
@@ -242,14 +272,16 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
               parsed_json = parsed_json["component"]
 
           # Robust AST component type inference for unstructured model outputs
-          if isinstance(parsed_json, dict) and not any(k in parsed_json for k in ["beginRendering", "surfaceUpdate"] + native_keys + ["Select", "Dropdown", "DropdownMenu"]):
+          if isinstance(parsed_json, dict) and not any(k in parsed_json for k in ["beginRendering", "surfaceUpdate"] + native_keys + ["Select", "Dropdown", "DropdownMenu", "Checkboxes", "checkboxes"]):
               if "options" in parsed_json:
                   parsed_json = {"Select": parsed_json}
               elif "label" in parsed_json or "text" in parsed_json:
                   parsed_json = {"Button": parsed_json}
+              elif any(k in str(parsed_json) for k in ["checkbox", "check box", "boxes"]):
+                  parsed_json = {"Checkboxes": parsed_json}
 
-          if isinstance(parsed_json, dict) and (any(k in parsed_json for k in native_keys) or "Select" in parsed_json) and not any(k in parsed_json for k in ["beginRendering", "surfaceUpdate"]):
-              matched_k = next(k for k in native_keys + ["Select"] if k in parsed_json)
+          if isinstance(parsed_json, dict) and (any(k in parsed_json for k in native_keys) or any(k in parsed_json for k in ["Select", "Checkboxes", "checkboxes"])) and not any(k in parsed_json for k in ["beginRendering", "surfaceUpdate"]):
+              matched_k = next(k for k in native_keys + ["Select", "Checkboxes", "checkboxes"] if k in parsed_json)
               comp_id = f"auto_root_{matched_k.lower()}"
               comp_wrapper = {"id": comp_id, "component": parsed_json}
               comps_list = [comp_wrapper]
@@ -393,7 +425,8 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                   stop_words = {'how', 'many', 'have', 'the', 'for', 'let', 'look', 'show', 'give', 'and', 'with'}
                   t_words = set([w.rstrip('s') for w in re.findall(r'\w+', clean_t) if len(w) > 2 and w not in stop_words])
                   q_words = set([w.rstrip('s') for w in re.findall(r'\w+', clean_q) if len(w) > 2 and w not in stop_words])
-                  if t_words and len(q_words.intersection(t_words)) >= len(t_words) - 1 and len(q_words.intersection(t_words)) >= 1:
+                  req_min = len(t_words) if len(t_words) <= 2 else len(t_words) - 1
+                  if t_words and len(q_words.intersection(t_words)) >= req_min and len(q_words.intersection(t_words)) >= 1:
                       match = True
                       
               if match:

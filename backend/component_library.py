@@ -244,3 +244,27 @@ def modal(*, element_id: str, entry_id: str, content_id: str) -> dict[str, Any]:
           }
       },
   }
+
+def multiple_choice(*, element_id: str, options: list[str], selected: list[int] = None) -> dict[str, Any]:
+  """Generates a MultipleChoice component."""
+  return {
+      "id": element_id,
+      "component": {
+          "MultipleChoice": {
+              "options": [{"literalString": str(opt)} for opt in options],
+              "selected": selected or [],
+          }
+      },
+  }
+
+def checkbox(*, element_id: str, label: str, checked: bool = False) -> dict[str, Any]:
+  """Generates a CheckBox component."""
+  return {
+      "id": element_id,
+      "component": {
+          "CheckBox": {
+              "label": {"literalString": label},
+              "checked": checked,
+          }
+      },
+  }

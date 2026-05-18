@@ -108,3 +108,28 @@ def render_ui_modal(button_label: str = "Open Details", modal_title: str = "Cont
         cl.begin_rendering(surface_id="canvas-surface", root="modal-root"),
         cl.surface_update(surface_id="canvas-surface", components=components)
     ]
+
+def render_ui_dropdown(title: str = "Select an Option", options: list[str] = ["Option A", "Option B"]) -> list:
+    """Generates and renders a dropdown selection menu in the UI using MultipleChoice."""
+    components = [
+        cl.multiple_choice(element_id="dropdown-comp", options=options)
+    ]
+    return [
+        cl.begin_rendering(surface_id="canvas-surface", root="dropdown-comp"),
+        cl.surface_update(surface_id="canvas-surface", components=components)
+    ]
+
+def render_ui_checkbox(labels: list[str] = ["Option X", "Option Y"]) -> list:
+    """Generates and renders a list of CheckBox components inside a vertical Column in the UI."""
+    components = []
+    child_ids = []
+    for idx, label_str in enumerate(labels):
+        c_id = f"chk_{idx}"
+        child_ids.append(c_id)
+        components.append(cl.checkbox(element_id=c_id, label=label_str, checked=False))
+        
+    components.append(cl.column(element_id="checkbox-col", children=child_ids))
+    return [
+        cl.begin_rendering(surface_id="canvas-surface", root="checkbox-col"),
+        cl.surface_update(surface_id="canvas-surface", components=components)
+    ]
