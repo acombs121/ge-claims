@@ -252,7 +252,7 @@ def multiple_choice(*, element_id: str, options: list[str], selected: list[int] 
       "component": {
           "MultipleChoice": {
               "options": [{"label": {"literalString": str(opt)}} for opt in options],
-              "selected": selected or [],
+              "selections": selected or [],
           }
       },
   }

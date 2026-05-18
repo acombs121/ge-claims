@@ -226,7 +226,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                               opt_nodes.append({"label": {"literalString": opt_str}})
                       obj["MultipleChoice"] = {
                           "options": opt_nodes,
-                          "selected": []
+                          "selections": []
                       }
 
                   # Normalize Checkbox/Checkboxes lists to a Column of native CheckBox elements
