@@ -111,8 +111,16 @@ async def serve_media(request):
                 with open(local_path, "rb") as f:
                     bytes_data = f.read()
                 ext = media_id.split(".")[-1].lower()
-                media_type = "image/png" if ext == "png" else "image/jpeg"
-                if ext == "webp": media_type = "image/webp"
+                if ext == "wav":
+                    media_type = "audio/wav"
+                elif ext == "mp3":
+                    media_type = "audio/mpeg"
+                elif ext == "png":
+                    media_type = "image/png"
+                elif ext == "webp":
+                    media_type = "image/webp"
+                else:
+                    media_type = "image/jpeg"
                 return Response(content=bytes_data, media_type=media_type)
             except Exception as e:
                 logger.error(f"Error serving media from local cache: {e}")
@@ -129,8 +137,16 @@ async def serve_media(request):
              
         bytes_data = blob.download_as_bytes()
         ext = media_id.split(".")[-1].lower()
-        media_type = "image/png" if ext == "png" else "image/jpeg"
-        if ext == "webp": media_type = "image/webp"
+        if ext == "wav":
+            media_type = "audio/wav"
+        elif ext == "mp3":
+            media_type = "audio/mpeg"
+        elif ext == "png":
+            media_type = "image/png"
+        elif ext == "webp":
+            media_type = "image/webp"
+        else:
+            media_type = "image/jpeg"
         
         return Response(content=bytes_data, media_type=media_type)
     except Exception as e:
