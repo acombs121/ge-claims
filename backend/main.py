@@ -96,36 +96,35 @@ app = A2AStarletteApplication(
     http_handler=request_handler,
 ).build()
 
-from starlette.responses import Response
+from starlette.responses import Response, FileResponse
 from starlette.routing import Route
 
 async def serve_media(request):
     media_id = request.path_params.get("media_id")
+    local_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'media_cache')
+    os.makedirs(local_dir, exist_ok=True)
+    local_path = os.path.join(local_dir, media_id)
     
-    # Local Fallback Check (Safety feature)
-    if not os.environ.get("K_SERVICE"):
-        local_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'media_cache')
-        local_path = os.path.join(local_dir, media_id)
-        if os.path.exists(local_path):
-            try:
-                with open(local_path, "rb") as f:
-                    bytes_data = f.read()
-                ext = media_id.split(".")[-1].lower()
-                if ext == "wav":
-                    media_type = "audio/wav"
-                elif ext == "mp3":
-                    media_type = "audio/mpeg"
-                elif ext == "png":
-                    media_type = "image/png"
-                elif ext == "webp":
-                    media_type = "image/webp"
-                else:
-                    media_type = "image/jpeg"
-                return Response(content=bytes_data, media_type=media_type)
-            except Exception as e:
-                logger.error(f"Error serving media from local cache: {e}")
-                # Fallback to GCS if local read fails
-                
+    ext = media_id.split(".")[-1].lower()
+    if ext == "wav":
+        media_type = "audio/wav"
+    elif ext == "mp3":
+        media_type = "audio/mpeg"
+    elif ext == "png":
+        media_type = "image/png"
+    elif ext == "webp":
+        media_type = "image/webp"
+    else:
+        media_type = "image/jpeg"
+
+    # 1. Check if file is in local media cache
+    if os.path.exists(local_path):
+        try:
+            return FileResponse(local_path, media_type=media_type)
+        except Exception as e:
+            logger.error(f"Error serving local file via FileResponse: {e}")
+
+    # 2. Fallback: Download from GCS cache locally to enable HTTP 206 Range request streaming
     try:
         from google.cloud import storage
         client = storage.Client(project="sandbox-426014")
@@ -135,20 +134,8 @@ async def serve_media(request):
         if not blob.exists():
              return Response(content="Media not found or expired from persistent GCS cache.", status_code=404)
              
-        bytes_data = blob.download_as_bytes()
-        ext = media_id.split(".")[-1].lower()
-        if ext == "wav":
-            media_type = "audio/wav"
-        elif ext == "mp3":
-            media_type = "audio/mpeg"
-        elif ext == "png":
-            media_type = "image/png"
-        elif ext == "webp":
-            media_type = "image/webp"
-        else:
-            media_type = "image/jpeg"
-        
-        return Response(content=bytes_data, media_type=media_type)
+        blob.download_to_filename(local_path)
+        return FileResponse(local_path, media_type=media_type)
     except Exception as e:
         logger.error(f"Error serving media dynamically from GCS: {e}")
         return Response(content=f"Internal Server Error: {str(e)}", status_code=500)
