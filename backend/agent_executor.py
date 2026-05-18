@@ -58,8 +58,8 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
     self._cached_ui_payload = None
     self._last_tool_name = None
     self._last_tool_data = None
-    self._session_active_tool = {}
-    self._session_active_data = {}
+    self._executed_tool_name = None
+    self._executed_tool_data = None
 
     wrapped_tools = []
     for t in getattr(self._agent, 'tools', []):
@@ -85,9 +85,8 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
           @wraps(tool_func)
           async def async_wrapper(*args, **kwargs):
               res = await tool_func(*args, **kwargs)
-              session_id = getattr(self, '_current_session_id', 'default')
-              self._session_active_tool[session_id] = tool_name
-              self._session_active_data[session_id] = res
+              self._executed_tool_name = tool_name
+              self._executed_tool_data = res
               self._last_tool_name = tool_name
               self._last_tool_data = res
               return res
@@ -96,9 +95,8 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
           @wraps(tool_func)
           def sync_wrapper(*args, **kwargs):
               res = tool_func(*args, **kwargs)
-              session_id = getattr(self, '_current_session_id', 'default')
-              self._session_active_tool[session_id] = tool_name
-              self._session_active_data[session_id] = res
+              self._executed_tool_name = tool_name
+              self._executed_tool_data = res
               self._last_tool_name = tool_name
               self._last_tool_data = res
               return res
@@ -224,10 +222,9 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
           parts.append(types.Part(root=types.TextPart(text=text_part.strip())))
 
         processed_data = None
-        session_id = getattr(self, '_current_session_id', 'default')
-        active_tool = self._session_active_tool.get(session_id)
+        active_tool = getattr(self, '_executed_tool_name', None)
         if active_tool == 'tool': active_tool = None
-        active_data = self._session_active_data.get(session_id)
+        active_data = getattr(self, '_executed_tool_data', None)
         
         json_data = {}
         if json_string_cleaned:
@@ -235,6 +232,26 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
             if active_data is None and isinstance(json_data, dict):
                 active_data = json_data
                 if not active_tool: active_tool = json_data.get("_source_tool")
+                
+        if not active_tool:
+            import re, inspect
+            query_str = getattr(self, '_current_query', '').lower()
+            resp_str = text_part.lower() if text_part else ''
+            for step in self._manifest.get("steps", []):
+                triggers = step.get("trigger_queries", [])
+                for t in triggers:
+                    t_words = [w.rstrip('s') for w in re.findall(r'\w+', t.lower()) if len(w) > 2]
+                    if t_words and (all(tw in query_str for tw in t_words) or all(tw in resp_str for tw in t_words)):
+                        active_tool = step.get("action_tool")
+                        if not active_data:
+                            for tool_fn in self._agent.tools:
+                                name = getattr(tool_fn, '__name__', None) or getattr(tool_fn, 'name', None)
+                                if name == active_tool:
+                                    if not inspect.iscoroutinefunction(tool_fn):
+                                        active_data = tool_fn()
+                                    break
+                        break
+                if active_tool: break
                 
         def find_custom_view(obj):
             if isinstance(obj, dict):
@@ -427,9 +444,9 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
         logger.error(f"A2UI-MEDIA-INTERCEPT | Error mapping parts: {e}") 
         
     updater = tasks.TaskUpdater(event_queue, task.id, task.context_id)
-    session_id = task.context_id
-    self._current_session_id = session_id
-    
+    self._current_query = query
+    self._executed_tool_name = None
+    self._executed_tool_data = None
     self._last_tool_name = None
     self._last_tool_data = None
     
