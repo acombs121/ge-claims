@@ -196,7 +196,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
           if not json_string_cleaned: json_string_cleaned = "[]"
           parsed_json = json.loads(json_string_cleaned)
            
-          native_keys = ["Button", "Card", "Text", "Column", "Row", "List", "Tabs", "Modal", "AudioPlayer", "Divider", "Icon", "Image", "Video", "MultipleChoice", "CheckBox"]
+          native_keys = ["Button", "Card", "Text", "Column", "Row", "List", "Tabs", "Modal", "AudioPlayer", "Divider", "Icon", "Image", "Video", "MultipleChoice", "CheckBox", "TextField", "Slider"]
             
           def normalize_ast(obj, c_list=None):
               if isinstance(obj, dict):
@@ -279,6 +279,10 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                   parsed_json = {"Button": parsed_json}
               elif any(k in str(parsed_json) for k in ["checkbox", "check box", "boxes"]):
                   parsed_json = {"Checkboxes": parsed_json}
+              elif any(k in str(parsed_json) for k in ["placeholder", "textfield", "input"]):
+                  parsed_json = {"TextField": parsed_json}
+              elif any(k in str(parsed_json) for k in ["slider", "min", "max"]):
+                  parsed_json = {"Slider": parsed_json}
 
           if isinstance(parsed_json, dict) and (any(k in parsed_json for k in native_keys) or any(k in parsed_json for k in ["Select", "Checkboxes", "checkboxes"])) and not any(k in parsed_json for k in ["beginRendering", "surfaceUpdate"]):
               matched_k = next(k for k in native_keys + ["Select", "Checkboxes", "checkboxes"] if k in parsed_json)

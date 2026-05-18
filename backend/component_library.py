@@ -268,3 +268,33 @@ def checkbox(*, element_id: str, label: str, checked: bool = False) -> dict[str,
           }
       },
   }
+
+def text_field(*, element_id: str, label: str = "", placeholder: str = "", value: str = "", action_name: str = "") -> dict[str, Any]:
+  """Generates a TextField component."""
+  tf_data = {}
+  if label: tf_data["label"] = {"literalString": label}
+  if placeholder: tf_data["placeholder"] = {"literalString": placeholder}
+  if value: tf_data["value"] = {"literalString": value}
+  if action_name: tf_data["action"] = {"name": action_name, "context": []}
+  return {
+      "id": element_id,
+      "component": {
+          "TextField": tf_data
+      }
+  }
+
+def slider(*, element_id: str, label: str = "", min_val: float = 0, max_val: float = 100, value: float = 50, step: float = 1) -> dict[str, Any]:
+  """Generates a Slider component."""
+  sl_data = {
+      "min": {"literalNumber": min_val},
+      "max": {"literalNumber": max_val},
+      "value": {"literalNumber": value},
+      "step": {"literalNumber": step},
+  }
+  if label: sl_data["label"] = {"literalString": label}
+  return {
+      "id": element_id,
+      "component": {
+          "Slider": sl_data
+      }
+  }
