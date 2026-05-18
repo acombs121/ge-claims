@@ -238,6 +238,9 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                       else:
                           if isinstance(item, (dict, list)): normalize_ast(item, c_list)
 
+          if isinstance(parsed_json, dict) and "component" in parsed_json and isinstance(parsed_json["component"], dict):
+              parsed_json = parsed_json["component"]
+
           if isinstance(parsed_json, dict) and any(k in parsed_json for k in native_keys) and not any(k in parsed_json for k in ["beginRendering", "surfaceUpdate"]):
               matched_k = next(k for k in native_keys if k in parsed_json)
               comp_id = f"auto_root_{matched_k.lower()}"
@@ -249,7 +252,8 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                   {"surfaceUpdate": {"surfaceId": "canvas-surface", "components": comps_list}}
               ]
           else:
-              normalize_ast(parsed_json)
+              comps_list = []
+              normalize_ast(parsed_json, comps_list)
 
           # Cache normalized JSON back to clean string for execution stage
           json_string_cleaned = json.dumps(parsed_json)
