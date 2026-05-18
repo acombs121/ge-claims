@@ -195,7 +195,65 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
 
           if not json_string_cleaned: json_string_cleaned = "[]"
           parsed_json = json.loads(json_string_cleaned)
-          
+           
+          native_keys = ["Button", "Card", "Text", "Column", "Row", "List", "Tabs", "Modal", "AudioPlayer", "Divider", "Icon", "Image", "Video"]
+           
+          def normalize_ast(obj, c_list=None):
+              if isinstance(obj, dict):
+                  if "Text" in obj and isinstance(obj["Text"], dict):
+                      t_node = obj["Text"]
+                      if "text" not in t_node and "literalString" in t_node:
+                          t_node["text"] = {"literalString": t_node.pop("literalString")}
+                  if "Button" in obj and isinstance(obj["Button"], dict):
+                      b_node = obj["Button"]
+                      if "action" not in b_node:
+                          b_node["action"] = {"name": "button_clicked", "context": []}
+                      if "child" not in b_node and "label" in b_node and c_list is not None:
+                          lbl = b_node.pop("label")
+                          l_str = lbl.get("literalString", "Button") if isinstance(lbl, dict) else str(lbl)
+                          b_node["child"] = "btn_child_txt"
+                          c_list.append({"id": "btn_child_txt", "component": {"Text": {"text": {"literalString": l_str}, "usageHint": "body"}}})
+                  if any(k in obj for k in ["Select", "Dropdown", "DropdownMenu"]):
+                      sel = obj.pop("Select", None) or obj.pop("Dropdown", None) or obj.pop("DropdownMenu", None)
+                      opts = sel.get("options", ["Option A", "Option B"]) if isinstance(sel, dict) else ["Option A", "Option B"]
+                      if isinstance(opts, dict) and "explicitList" in opts: opts = opts["explicitList"]
+                      child_ids = []
+                      if c_list is not None and isinstance(opts, list):
+                          for idx, opt in enumerate(opts):
+                              opt_str = opt.get("literalString", f"Option {idx+1}") if isinstance(opt, dict) else str(opt)
+                              b_id = f"sel_btn_{idx}"
+                              t_id = f"sel_txt_{idx}"
+                              child_ids.append(b_id)
+                              c_list.append({"id": b_id, "component": {"Button": {"child": t_id, "action": {"name": "select_option", "context": [{"id": f"opt_{idx}"}]}}}})
+                              c_list.append({"id": t_id, "component": {"Text": {"text": {"literalString": opt_str}, "usageHint": "body"}}})
+                      obj["Column"] = {"children": {"explicitList": child_ids}}
+                  for v in list(obj.values()):
+                      if isinstance(v, (dict, list)): normalize_ast(v, c_list)
+              elif isinstance(obj, list):
+                  for item in obj:
+                      if isinstance(item, dict) and "surfaceUpdate" in item and isinstance(item["surfaceUpdate"], dict):
+                          comps = item["surfaceUpdate"].get("components", [])
+                          if isinstance(comps, list):
+                              for c in comps: normalize_ast(c, comps)
+                      else:
+                          if isinstance(item, (dict, list)): normalize_ast(item, c_list)
+
+          if isinstance(parsed_json, dict) and any(k in parsed_json for k in native_keys) and not any(k in parsed_json for k in ["beginRendering", "surfaceUpdate"]):
+              matched_k = next(k for k in native_keys if k in parsed_json)
+              comp_id = f"auto_root_{matched_k.lower()}"
+              comp_wrapper = {"id": comp_id, "component": parsed_json}
+              comps_list = [comp_wrapper]
+              normalize_ast(comp_wrapper, comps_list)
+              parsed_json = [
+                  {"beginRendering": {"surfaceId": "canvas-surface", "root": comp_id}},
+                  {"surfaceUpdate": {"surfaceId": "canvas-surface", "components": comps_list}}
+              ]
+          else:
+              normalize_ast(parsed_json)
+
+          # Cache normalized JSON back to clean string for execution stage
+          json_string_cleaned = json.dumps(parsed_json)
+           
           def has_custom_view(obj):
               if isinstance(obj, dict):
                   if "CustomView" in obj:
@@ -254,61 +312,8 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                 view_data = target_view.get("data", {})
                 if "theme" in target_view: view_data["theme"] = target_view["theme"]
                 llm_explicit_ui = self._build_webframe(view_data, target_view.get("template", "dashboard"))
-            elif isinstance(json_data, list) or isinstance(json_data, dict):
-                native_keys = ["Button", "Card", "Text", "Column", "Row", "List", "Tabs", "Modal", "AudioPlayer", "Divider", "Icon", "Image", "Video"]
-                def normalize_ast(obj, c_list=None):
-                    if isinstance(obj, dict):
-                        if "Text" in obj and isinstance(obj["Text"], dict):
-                            t_node = obj["Text"]
-                            if "text" not in t_node and "literalString" in t_node:
-                                t_node["text"] = {"literalString": t_node.pop("literalString")}
-                        if "Button" in obj and isinstance(obj["Button"], dict):
-                            b_node = obj["Button"]
-                            if "action" not in b_node:
-                                b_node["action"] = {"name": "button_clicked", "context": []}
-                            if "child" not in b_node and "label" in b_node and c_list is not None:
-                                lbl = b_node.pop("label")
-                                l_str = lbl.get("literalString", "Button") if isinstance(lbl, dict) else str(lbl)
-                                b_node["child"] = "btn_child_txt"
-                                c_list.append({"id": "btn_child_txt", "component": {"Text": {"text": {"literalString": l_str}, "usageHint": "body"}}})
-                        if any(k in obj for k in ["Select", "Dropdown", "DropdownMenu"]):
-                            sel = obj.pop("Select", None) or obj.pop("Dropdown", None) or obj.pop("DropdownMenu", None)
-                            opts = sel.get("options", ["Option A", "Option B"]) if isinstance(sel, dict) else ["Option A", "Option B"]
-                            if isinstance(opts, dict) and "explicitList" in opts: opts = opts["explicitList"]
-                            child_ids = []
-                            if c_list is not None and isinstance(opts, list):
-                                for idx, opt in enumerate(opts):
-                                    opt_str = opt.get("literalString", f"Option {idx+1}") if isinstance(opt, dict) else str(opt)
-                                    b_id = f"sel_btn_{idx}"
-                                    t_id = f"sel_txt_{idx}"
-                                    child_ids.append(b_id)
-                                    c_list.append({"id": b_id, "component": {"Button": {"child": t_id, "action": {"name": "select_option", "context": [{"id": f"opt_{idx}"}]}}}})
-                                    c_list.append({"id": t_id, "component": {"Text": {"text": {"literalString": opt_str}, "usageHint": "body"}}})
-                            obj["Column"] = {"children": {"explicitList": child_ids}}
-                        for v in list(obj.values()):
-                            if isinstance(v, (dict, list)): normalize_ast(v, c_list)
-                    elif isinstance(obj, list):
-                        for item in obj:
-                            if isinstance(item, dict) and "surfaceUpdate" in item and isinstance(item["surfaceUpdate"], dict):
-                                comps = item["surfaceUpdate"].get("components", [])
-                                if isinstance(comps, list):
-                                    for c in comps: normalize_ast(c, comps)
-                            else:
-                                if isinstance(item, (dict, list)): normalize_ast(item, c_list)
-
-                if isinstance(json_data, dict) and any(k in json_data for k in native_keys) and not any(k in json_data for k in ["beginRendering", "surfaceUpdate"]):
-                    matched_k = next(k for k in native_keys if k in json_data)
-                    comp_id = f"auto_root_{matched_k.lower()}"
-                    comp_wrapper = {"id": comp_id, "component": json_data}
-                    comps_list = [comp_wrapper]
-                    normalize_ast(comp_wrapper, comps_list)
-                    llm_explicit_ui = [
-                        {"beginRendering": {"surfaceId": "canvas-surface", "root": comp_id}},
-                        {"surfaceUpdate": {"surfaceId": "canvas-surface", "components": comps_list}}
-                    ]
-                else:
-                    normalize_ast(json_data)
-                    llm_explicit_ui = json_data
+            elif isinstance(json_data, (list, dict)):
+                llm_explicit_ui = json_data
                 
         manifest_handled = False
         if active_tool:
