@@ -254,7 +254,8 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                 view_data = target_view.get("data", {})
                 if "theme" in target_view: view_data["theme"] = target_view["theme"]
                 llm_explicit_ui = self._build_webframe(view_data, target_view.get("template", "dashboard"))
-            elif isinstance(json_data, list) or (isinstance(json_data, dict) and any(k in json_data for k in ["beginRendering", "surfaceUpdate"])):
+            elif isinstance(json_data, list) or isinstance(json_data, dict):
+                native_keys = ["Button", "Card", "Text", "Column", "Row", "List", "Tabs", "Modal", "AudioPlayer", "Divider", "Icon", "Image", "Video"]
                 def normalize_ast(obj, c_list=None):
                     if isinstance(obj, dict):
                         if "Text" in obj and isinstance(obj["Text"], dict):
@@ -294,8 +295,20 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                                     for c in comps: normalize_ast(c, comps)
                             else:
                                 if isinstance(item, (dict, list)): normalize_ast(item, c_list)
-                normalize_ast(json_data)
-                llm_explicit_ui = json_data
+
+                if isinstance(json_data, dict) and any(k in json_data for k in native_keys) and not any(k in json_data for k in ["beginRendering", "surfaceUpdate"]):
+                    matched_k = next(k for k in native_keys if k in json_data)
+                    comp_id = f"auto_root_{matched_k.lower()}"
+                    comp_wrapper = {"id": comp_id, "component": json_data}
+                    comps_list = [comp_wrapper]
+                    normalize_ast(comp_wrapper, comps_list)
+                    llm_explicit_ui = [
+                        {"beginRendering": {"surfaceId": "canvas-surface", "root": comp_id}},
+                        {"surfaceUpdate": {"surfaceId": "canvas-surface", "components": comps_list}}
+                    ]
+                else:
+                    normalize_ast(json_data)
+                    llm_explicit_ui = json_data
                 
         manifest_handled = False
         if active_tool:
