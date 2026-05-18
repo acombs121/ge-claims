@@ -143,7 +143,7 @@ def get_performance_reviews():
                 "type": "chart",
                 "title": "Competency Matrix",
                 "data": {
-                    "type": "bar",
+                    "type": "radar",
                     "label": "Score",
                     "labels": comps.get('labels', []),
                     "data": comps.get('data', [])

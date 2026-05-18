@@ -243,27 +243,8 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                     if res: return res
             return None
             
-        llm_explicit_ui = None
-        if json_data:
-            if active_data is None and isinstance(json_data, dict):
-                active_data = json_data
-                if not active_tool: active_tool = json_data.get("_source_tool")
-                
-            target_view = find_custom_view(json_data)
-            if target_view:
-                view_data = target_view.get("data", {})
-                if "theme" in target_view: view_data["theme"] = target_view["theme"]
-                llm_explicit_ui = self._build_webframe(view_data, target_view.get("template", "dashboard"))
-            elif isinstance(json_data, list) or (isinstance(json_data, dict) and any(k in json_data for k in ["beginRendering", "surfaceUpdate"])):
-                llm_explicit_ui = json_data
-                
-        manifest_handled = False
-        if llm_explicit_ui:
-            processed_data = llm_explicit_ui
-            manifest_handled = True
-            
-        # 3. Stateless topic matching when NO tool ran & no explicit UI outputted
-        if not manifest_handled and not active_tool:
+        # 1. First Priority: Check if active_tool was executed in Python or if query matches manifest topics via Jaccard
+        if not active_tool:
             steps = self._manifest.get("steps", [])
             import re
             q_text = getattr(self, '_current_query', '').lower()
@@ -295,7 +276,8 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                         except: pass
                         break
                         
-        if not manifest_handled and active_tool:
+        manifest_handled = False
+        if active_tool:
             steps = self._manifest.get("steps", [])
             tool_cfg = next((s for s in steps if s.get("action_tool") == active_tool), None)
             if tool_cfg:
@@ -323,6 +305,16 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                     if mapper_func:
                         processed_data = mapper_func(active_data or json_data)
                         manifest_handled = True
+                        
+        # 2. Second Priority: If manifest didn't handle it, check if LLM explicit UI or CustomView was outputted (solves ad-hoc button!)
+        if not manifest_handled and json_data:
+            target_view = find_custom_view(json_data)
+            if target_view:
+                view_data = target_view.get("data", {})
+                if "theme" in target_view: view_data["theme"] = target_view["theme"]
+                processed_data = self._build_webframe(view_data, target_view.get("template", "dashboard"))
+            elif isinstance(json_data, list) or (isinstance(json_data, dict) and any(k in json_data for k in ["beginRendering", "surfaceUpdate"])):
+                processed_data = json_data
 
         # Intercepted Payload Handling (Merged)
         if cached_ui_payload:
