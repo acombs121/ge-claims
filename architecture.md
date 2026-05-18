@@ -29,31 +29,28 @@ To guarantee 100% reliable UI and data rendering across exact demo scripts and n
 *   **Tier 1 (Fast-Path Interception)**: When a user query matches a `trigger_queries` substring exactly (ignoring punctuation), the server instantly executes the mapped ADK tool synchronously and emits the UI card directly. Zero LLM latency.
 *   **Tier 2 (In-Memory Data Capture on LLM Fallback)**: When a query misses manifest triggers, the turn passes to the LLM for semantic tool selection. To eliminate JSON data truncation over chat streams, all registered ADK tools are dynamically wrapped upon initialization. Whenever any tool executes during an LLM turn, the wrapper captures the exact returned data dictionary directly in backend server memory (`self._last_tool_data`). During payload packaging, the server inspects the active tool against the manifest and passes the captured memory dictionary directly into the UI mapper (`native` or `iframe`), guaranteeing zero token overhead and flawless UI data hydration every single time.
 
-## 2.5 Declarative UI Philosophy & Pure Stateless Turn Logic Chain
+## 2.5 Declarative UI Philosophy & Cascading Decision Tree
 
 ### The Declarative Philosophy
 The fundamental philosophy of this architecture is that **backend execution logic must remain completely decoupled from presentation formatting**. Backend server code and LLM agent instructions should focus strictly on business data fetching and semantic reasoning. By declaring UI strategies in a standalone manifest (`demo_manifest.json`) and component mappers, we prevent backend code from turning into fragile HTML/JSON markup spaghetti, allowing seamless multi-tenant and industry cloning.
 
-### The Pure Stateless Turn Logic Chain
-To prevent conversational memory from causing topic switches to get "stuck" on previous tools, the execution engine enforces a completely **stateless logic chain on every single turn**, regardless of turn sequence or conversation history:
+### The Cascading Decision Tree
+When a user query arrives, the execution engine processes it through a strict cascading decision tree:
 
 ```mermaid
 graph TD
-    A[Incoming User Query: Turn N] --> B{Matches Manifest Trigger? <br> Exact or Stem}
-    B -- Yes (Instant Intercept) --> C[Execute Mapped ADK Tool Synchronously <br> Render Declared UI]
-    B -- No (LLM Fallback) --> D[Pass Query to Vertex AI]
-    D --> E{Does LLM Call Tool?}
-    E -- Yes --> F[Tool Wrapper Locks active_tool in Memory]
-    E -- No --> G[active_tool Remains None]
-    F --> H{Is active_tool in Manifest?}
-    G --> I{Does Query/Text Semantically <br> Map to Manifest?}
-    I -- Yes --> J[Dynamically Re-hydrate Mapped Tool <br> active_tool = mapped_tool]
-    I -- No --> K{Does Output Require UI?}
-    H -- Yes --> L[Render Declared Manifest Strategy <br> Native Card, Iframe, URL]
-    H -- No --> K
-    J --> L
-    K -- Yes --> M[Select UI Component Type <br> Standard vs Custom View]
-    K -- No --> N[Render Standard Conversational Text]
+    A[User Query] --> B{Matches Manifest Trigger?}
+    B -- Yes (Tier 1) --> C[Fast-Path Interception: Run ADK Tool & Render Declared UI]
+    B -- No (Tier 2) --> D[Intelligent LLM Fallback Turn]
+    D --> E[LLM Semantically Selects & Executes ADK Tool]
+    E --> F[Tool Wrapper Captures Data into Memory]
+    F --> G{Is Executed Tool in Manifest?}
+    G -- Yes (Manifest Precedence) --> H[Pass Captured Memory Data to Mapped UI Strategy]
+    G -- No (Dynamic Fallback) --> I{Does Output Require UI?}
+    I -- Yes --> J{Select UI Component Type}
+    I -- No --> K[Render Standard Conversational Text]
+    J --> L[Custom Components: Dashboard, Map, ProductSelection]
+    J --> M[Standard Components: Native Cards, Tables, Lists]
 ```
 
 ### UI Component Selection & Formatting Guidance

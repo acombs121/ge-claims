@@ -233,25 +233,34 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                 active_data = json_data
                 if not active_tool: active_tool = json_data.get("_source_tool")
                 
+        # 3. Stateless topic matching when NO tool ran
         if not active_tool:
-            import re, inspect
-            query_str = getattr(self, '_current_query', '').lower()
-            resp_str = text_part.lower() if text_part else ''
-            for step in self._manifest.get("steps", []):
+            steps = self._manifest.get("steps", [])
+            import re
+            q_text = getattr(self, '_current_query', '').lower() + " " + text_part.lower()
+            q_words = [w.rstrip('s') for w in re.findall(r'\w+', q_text) if len(w) > 2]
+            for step in steps:
                 triggers = step.get("trigger_queries", [])
-                for t in triggers:
-                    t_words = [w.rstrip('s') for w in re.findall(r'\w+', t.lower()) if len(w) > 2]
-                    if t_words and (all(tw in query_str for tw in t_words) or all(tw in resp_str for tw in t_words)):
+                for trigger in triggers:
+                    clean_t = trigger.lower().replace('?', '').replace('.', '').replace('!', '').strip()
+                    if clean_t in q_text:
                         active_tool = step.get("action_tool")
-                        if not active_data:
-                            for tool_fn in self._agent.tools:
-                                name = getattr(tool_fn, '__name__', None) or getattr(tool_fn, 'name', None)
-                                if name == active_tool:
-                                    if not inspect.iscoroutinefunction(tool_fn):
-                                        active_data = tool_fn()
-                                    break
+                        break
+                    t_words = [w.rstrip('s') for w in re.findall(r'\w+', clean_t) if len(w) > 2]
+                    if t_words and all(tw in q_words for tw in t_words):
+                        active_tool = step.get("action_tool")
                         break
                 if active_tool: break
+                
+            if active_tool and active_data is None:
+                for t in getattr(self._agent, 'tools', []):
+                    name = getattr(t, '__name__', None) or getattr(t, 'name', None)
+                    if name == active_tool:
+                        import inspect
+                        try:
+                            if not inspect.iscoroutinefunction(t): active_data = t()
+                        except: pass
+                        break
                 
         def find_custom_view(obj):
             if isinstance(obj, dict):
@@ -444,11 +453,13 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
         logger.error(f"A2UI-MEDIA-INTERCEPT | Error mapping parts: {e}") 
         
     updater = tasks.TaskUpdater(event_queue, task.id, task.context_id)
+    session_id = task.context_id
     self._current_query = query
-    self._executed_tool_name = None
-    self._executed_tool_data = None
+    
     self._last_tool_name = None
     self._last_tool_data = None
+    self._executed_tool_name = None
+    self._executed_tool_data = None
     
     # Intercept Action Check
     intercepted_parts = await self._handle_intercepted_action(query)
