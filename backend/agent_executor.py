@@ -226,45 +226,11 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
         if active_tool == 'tool': active_tool = None
         active_data = getattr(self, '_executed_tool_data', None)
         
-        json_data = {}
+        json_data = None
         if json_string_cleaned:
-            json_data = json.loads(json_string_cleaned)
-            if active_data is None and isinstance(json_data, dict):
-                active_data = json_data
-                if not active_tool: active_tool = json_data.get("_source_tool")
-                
-        # 3. Stateless topic matching when NO tool ran
-        if not active_tool:
-            steps = self._manifest.get("steps", [])
-            import re
-            q_text = getattr(self, '_current_query', '').lower() + " " + text_part.lower()
-            stop_words = {'how', 'many', 'have', 'the', 'for', 'let', 'look', 'show', 'give', 'and', 'with'}
-            q_words = set([w.rstrip('s') for w in re.findall(r'\w+', q_text) if len(w) > 2 and w not in stop_words])
+            try: json_data = json.loads(json_string_cleaned)
+            except: pass
             
-            best_match_step = None
-            best_score = 0
-            for step in steps:
-                triggers = step.get("trigger_queries", [])
-                for trigger in triggers:
-                    t_words = set([w.rstrip('s') for w in re.findall(r'\w+', trigger.lower()) if len(w) > 2 and w not in stop_words])
-                    overlap = len(q_words.intersection(t_words))
-                    if overlap > best_score and overlap >= 1:
-                        best_score = overlap
-                        best_match_step = step
-            
-            if best_match_step:
-                active_tool = best_match_step.get("action_tool")
-                
-            if active_tool and active_data is None:
-                for t in getattr(self._agent, 'tools', []):
-                    name = getattr(t, '__name__', None) or getattr(t, 'name', None)
-                    if name == active_tool:
-                        import inspect
-                        try:
-                            if not inspect.iscoroutinefunction(t): active_data = t()
-                        except: pass
-                        break
-                
         def find_custom_view(obj):
             if isinstance(obj, dict):
                 if "CustomView" in obj: return obj["CustomView"]
@@ -277,8 +243,59 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                     if res: return res
             return None
             
+        llm_explicit_ui = None
+        if json_data:
+            if active_data is None and isinstance(json_data, dict):
+                active_data = json_data
+                if not active_tool: active_tool = json_data.get("_source_tool")
+                
+            target_view = find_custom_view(json_data)
+            if target_view:
+                view_data = target_view.get("data", {})
+                if "theme" in target_view: view_data["theme"] = target_view["theme"]
+                llm_explicit_ui = self._build_webframe(view_data, target_view.get("template", "dashboard"))
+            elif isinstance(json_data, list) or (isinstance(json_data, dict) and any(k in json_data for k in ["beginRendering", "surfaceUpdate"])):
+                llm_explicit_ui = json_data
+                
         manifest_handled = False
-        if active_tool:
+        if llm_explicit_ui:
+            processed_data = llm_explicit_ui
+            manifest_handled = True
+            
+        # 3. Stateless topic matching when NO tool ran & no explicit UI outputted
+        if not manifest_handled and not active_tool:
+            steps = self._manifest.get("steps", [])
+            import re
+            q_text = getattr(self, '_current_query', '').lower()
+            stop_words = {'how', 'many', 'have', 'the', 'for', 'let', 'look', 'show', 'give', 'and', 'with', 'that', 'says', 'this', 'can', 'you', 'please', 'create', 'button', 'widget'}
+            q_words = set([w.rstrip('s') for w in re.findall(r'\w+', q_text) if len(w) > 2 and w not in stop_words])
+            
+            if len(q_words) > 0:
+                best_match_step = None
+                best_score = 0
+                for step in steps:
+                    triggers = step.get("trigger_queries", [])
+                    for trigger in triggers:
+                        t_words = set([w.rstrip('s') for w in re.findall(r'\w+', trigger.lower()) if len(w) > 2 and w not in stop_words])
+                        overlap = len(q_words.intersection(t_words))
+                        if overlap > best_score and overlap >= 1:
+                            best_score = overlap
+                            best_match_step = step
+                
+                if best_match_step:
+                    active_tool = best_match_step.get("action_tool")
+                
+            if active_tool and active_data is None:
+                for t in getattr(self._agent, 'tools', []):
+                    name = getattr(t, '__name__', None) or getattr(t, 'name', None)
+                    if name == active_tool:
+                        import inspect
+                        try:
+                            if not inspect.iscoroutinefunction(t): active_data = t()
+                        except: pass
+                        break
+                        
+        if not manifest_handled and active_tool:
             steps = self._manifest.get("steps", [])
             tool_cfg = next((s for s in steps if s.get("action_tool") == active_tool), None)
             if tool_cfg:
@@ -306,13 +323,6 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                     if mapper_func:
                         processed_data = mapper_func(active_data or json_data)
                         manifest_handled = True
-        
-        if not manifest_handled and json_string_cleaned:
-            target_view = find_custom_view(json_data)
-            if target_view:
-                view_data = target_view.get("data", {})
-                if "theme" in target_view: view_data["theme"] = target_view["theme"]
-                processed_data = self._build_webframe(view_data, target_view.get("template", "dashboard"))
 
         # Intercepted Payload Handling (Merged)
         if cached_ui_payload:
