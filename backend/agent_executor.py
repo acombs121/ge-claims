@@ -327,10 +327,12 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                         processed_data = mapper_func(active_data or json_data)
                         manifest_handled = True
                         
-        # 2. Second Priority: If manifest didn't handle it, check if LLM explicit UI or CustomView was outputted
-        if not manifest_handled and llm_explicit_ui:
-            processed_data = llm_explicit_ui
-            manifest_handled = True
+        # 2. Second Priority: If manifest didn't handle it, check if active_data is a tool-generated UI tree or llm_explicit_ui is present
+        if not manifest_handled:
+            ui_payload = active_data if isinstance(active_data, (list, dict)) and any(k in str(active_data) for k in ["beginRendering", "surfaceUpdate"]) else llm_explicit_ui
+            if ui_payload:
+                processed_data = ui_payload
+                manifest_handled = True
 
         # Intercepted Payload Handling (Merged)
         if cached_ui_payload:
