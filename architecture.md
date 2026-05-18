@@ -18,8 +18,9 @@ To address the complexity of building and cloning these agents, we use a design 
 ### 1. "Pure Data" Tools
 Tools are strictly focused on fetching and returning business facts (raw data). They do not construct UI component trees or reference templates. This isolates the impact of data schema changes and makes tools reusable.
 
-### 2. Component Library & Mappers
-For scenarios where a low-overhead, native experience is preferred, we use a **Component Library** (`component_library.py`) to generate Native A2UI JSON payloads safely and consistently. Specialized **Mapper Functions** take the pure data from tools and use the library to build the specific card structure.
+### 2. Component Library, Mappers & Tool-Driven UI Generators
+For core domain scenarios where a low-overhead, native experience is required, we use a **Component Library** (`component_library.py`) to generate Native A2UI JSON payloads safely. Specialized **Mapper Functions** (`component_mappers.py`) take pure data from tools and build specific card structures.
+Furthermore, for ad-hoc visual inquiries during testing (*"give me a button"*, *"give me a dropdown"*), the model is empowered with a suite of **Tool-Driven UI Generators** (`ui_generators.py`). When the model calls `render_ui_button()` or `render_ui_tabs()`, our Python backend executes the official dictionary constructors, guaranteeing 100% type-safe AST generation and eliminating raw JSON AST writing from the model prompt!
 
 ### 3. Declarative Demo Manifest
 The `demo_manifest.json` file acts as the orchestration layer. It maps specific user queries to tools and defines the rendering strategy without hardcoding Python logic.
