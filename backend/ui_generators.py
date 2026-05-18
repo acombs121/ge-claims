@@ -63,3 +63,48 @@ def render_ui_table(title: str = "Data Overview", headers: list[str] = ["Item", 
         cl.begin_rendering(surface_id="canvas-surface", root="table-card"),
         cl.surface_update(surface_id="canvas-surface", components=components)
     ]
+
+def render_ui_card(title: str = "Information Card", body_text: str = "Detailed descriptive content for the user.") -> list:
+    """Generates and renders a standalone information Card component in the UI."""
+    components = [
+        cl.card(element_id="info-card", child="info-col"),
+        cl.column(element_id="info-col", children=["info-title", "info-body"]),
+        cl.text(element_id="info-title", content=title, usage_hint="h3"),
+        cl.text(element_id="info-body", content=body_text, usage_hint="body")
+    ]
+    return [
+        cl.begin_rendering(surface_id="canvas-surface", root="info-card"),
+        cl.surface_update(surface_id="canvas-surface", components=components)
+    ]
+
+def render_ui_tabs(tab_titles: list[str] = ["Tab 1", "Tab 2"], tab_contents: list[str] = ["Content for Tab 1", "Content for Tab 2"]) -> list:
+    """Generates and renders an interactive multi-view Tabs component in the UI."""
+    components = []
+    child_ids = []
+    for idx, content_str in enumerate(tab_contents):
+        c_id = f"tab_c_{idx}"
+        child_ids.append(c_id)
+        components.append(cl.text(element_id=c_id, content=str(content_str), usage_hint="body"))
+        
+    components.append(cl.tabs(element_id="tabs-root", titles=tab_titles, children=child_ids, selected=0))
+    return [
+        cl.begin_rendering(surface_id="canvas-surface", root="tabs-root"),
+        cl.surface_update(surface_id="canvas-surface", components=components)
+    ]
+
+def render_ui_modal(button_label: str = "Open Details", modal_title: str = "Context Details", modal_content: str = "Full expanded breakdown of information.") -> list:
+    """Generates and renders an interactive button that opens an overlay Modal dialog in the UI."""
+    components = []
+    
+    btn_nodes = cl.button(element_id="modal-entry-btn", label=button_label, action_name="open_modal", context=[])
+    components.extend(btn_nodes)
+    
+    components.append(cl.column(element_id="modal-content-col", children=["m-title", "m-body"]))
+    components.append(cl.text(element_id="m-title", content=modal_title, usage_hint="h3"))
+    components.append(cl.text(element_id="m-body", content=modal_content, usage_hint="body"))
+    
+    components.append(cl.modal(element_id="modal-root", entry_id="modal-entry-btn", content_id="modal-content-col"))
+    return [
+        cl.begin_rendering(surface_id="canvas-surface", root="modal-root"),
+        cl.surface_update(surface_id="canvas-surface", components=components)
+    ]

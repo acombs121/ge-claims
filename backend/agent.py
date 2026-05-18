@@ -6,7 +6,7 @@ from google.adk.agents import Agent
 from prompt_builder import get_ui_instruction
 from hr_data import get_hr_portal_overview, get_performance_reviews, get_benefits_summary, register_benefit, reset_state
 from media_tools import generate_synthetic_image, generate_synthetic_audio
-from ui_generators import render_ui_button, render_ui_dropdown, render_ui_table
+from ui_generators import render_ui_button, render_ui_dropdown, render_ui_table, render_ui_card, render_ui_tabs, render_ui_modal
 
 
 async def generate_hr_graphic(prompt: str = "Generate a clean, modern, but minimalist visual skill matrix diagram for a software engineering team consisting of a Manager (John), and two direct reports (Alice and Bob). For Bob, show scores of Leadership: 3.0, Delivery: 4.0, Mentorship: 3.0, Innovation: 3.5, Communication: 3.0 on a 5-point scale. Use Aon corporate aesthetics with red and grey primary colors, and clean lines. Do NOT include any human avatars, portraits, or specific skin tones. Use text or generic shapes/icons only. Do NOT include any Lorem Ipsum text or random gibberish text."):
@@ -37,7 +37,7 @@ Your goal is to showcase the capabilities of the platform through a specialized 
 - **CRITICAL**: DO NOT repeat the JSON payload or the tool's raw data in your conversational response.
 - **CRITICAL**: You MUST ALWAYS output the delimiter `---a2ui_JSON---` on a new line before outputting any JSON payload. Failure to do so will break the UI.
 - **CRITICAL**: Ensure all JSON payloads are perfectly valid. Never include trailing commas in arrays or objects, as this will break the parser in the client UI.
-- **AD-HOC UI GENERATION**: Whenever the user requests an ad-hoc visual component (like a button, dropdown, or table), DO NOT write raw JSON AST by hand. Instead, you MUST call the appropriate standard UI generator tool (`render_ui_button`, `render_ui_dropdown`, `render_ui_table`).
+- **AD-HOC UI GENERATION**: Whenever the user requests an ad-hoc visual component (like a button, dropdown, table, card, tabs, or modal), DO NOT write raw JSON AST by hand. Instead, you MUST call the appropriate standard UI generator tool (`render_ui_button`, `render_ui_dropdown`, `render_ui_table`, `render_ui_card`, `render_ui_tabs`, `render_ui_modal`).
 - **CRITICAL**: When you receive a "User action triggered" message, read the payload and call the appropriate tool. Do NOT automatically proceed to the next query or output another component unless instructed.
 - **CRITICAL TOOL EXECUTION RULE**: Even if you already know the employee's data (such as vacation balance, HR profile, or performance reviews) from earlier in the conversation history, YOU MUST ALWAYS RE-EXECUTE THE APPROPRIATE ADK TOOL (`get_benefits_summary()`, `get_hr_portal_overview()`, `get_performance_reviews()`) whenever the user asks a follow-up question or variation inquiring about that topic! Never answer from memory without calling the tool. Calling the tool is mandatory for the backend server to lock memory and format the visual UI cards.
 - **CRITICAL**: Do not jump ahead in the demo flow. Wait for the user to ask the specific query for each step.
@@ -88,6 +88,9 @@ root_agent = Agent(
         render_ui_button,
         render_ui_dropdown,
         render_ui_table,
+        render_ui_card,
+        render_ui_tabs,
+        render_ui_modal,
         reset_state
     ]
 )

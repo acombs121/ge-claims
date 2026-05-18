@@ -214,8 +214,33 @@ def audio_player(
       "id": element_id,
       "component": {
           "AudioPlayer": {
-              "audio": {"literalString": audio_url},
+              "url": {"literalString": audio_url},
               "description": {"literalString": description},
+          }
+      },
+  }
+
+def tabs(*, element_id: str, titles: list[str], children: list[str], selected: int = 0) -> dict[str, Any]:
+  """Generates a Tabs component."""
+  return {
+      "id": element_id,
+      "component": {
+          "Tabs": {
+              "titles": [{"literalString": str(t)} for t in titles],
+              "selected": selected,
+              "children": {"explicitList": children},
+          }
+      },
+  }
+
+def modal(*, element_id: str, entry_id: str, content_id: str) -> dict[str, Any]:
+  """Generates a Modal component."""
+  return {
+      "id": element_id,
+      "component": {
+          "Modal": {
+              "entry": entry_id,
+              "content": content_id,
           }
       },
   }
