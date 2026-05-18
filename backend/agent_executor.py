@@ -241,8 +241,15 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
           if isinstance(parsed_json, dict) and "component" in parsed_json and isinstance(parsed_json["component"], dict):
               parsed_json = parsed_json["component"]
 
-          if isinstance(parsed_json, dict) and any(k in parsed_json for k in native_keys) and not any(k in parsed_json for k in ["beginRendering", "surfaceUpdate"]):
-              matched_k = next(k for k in native_keys if k in parsed_json)
+          # Robust AST component type inference for unstructured model outputs
+          if isinstance(parsed_json, dict) and not any(k in parsed_json for k in ["beginRendering", "surfaceUpdate"] + native_keys + ["Select", "Dropdown", "DropdownMenu"]):
+              if "options" in parsed_json:
+                  parsed_json = {"Select": parsed_json}
+              elif "label" in parsed_json or "text" in parsed_json:
+                  parsed_json = {"Button": parsed_json}
+
+          if isinstance(parsed_json, dict) and (any(k in parsed_json for k in native_keys) or "Select" in parsed_json) and not any(k in parsed_json for k in ["beginRendering", "surfaceUpdate"]):
+              matched_k = next(k for k in native_keys + ["Select"] if k in parsed_json)
               comp_id = f"auto_root_{matched_k.lower()}"
               comp_wrapper = {"id": comp_id, "component": parsed_json}
               comps_list = [comp_wrapper]
