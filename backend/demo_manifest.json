@@ -52,6 +52,17 @@
       "action_tool": "generate_hr_graphic",
       "output_mode": "native",
       "native_mapper": "build_image_card"
+    },
+    {
+      "phase": 6,
+      "trigger_queries": [
+        "give me an audio summary",
+        "audio summary of my profile",
+        "podcast summary"
+      ],
+      "action_tool": "generate_audio_summary",
+      "output_mode": "native",
+      "native_mapper": "build_audio_card"
     }
   ]
 }

@@ -171,3 +171,81 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
         return f"Image generation explicitly failed against the Vertex global endpoint: {str(e)}. Please inform the user of this exact error string in your output so they can debug it."
 
     return "Error: Generated response did not contain inline image bytes."
+
+
+async def generate_synthetic_audio(context_summary: str, tool_context: ToolContext = None) -> str:
+    """Generates a synthetic audio podcast summary based on the current context using gemini-3.1-flash-tts-preview. Returns the public URL to the generated audio file."""
+    if not genai:
+        return "Error: google-genai SDK is not installed or available."
+        
+    try:
+        client = genai.Client(
+            vertexai=True,
+            project=os.environ.get("GOOGLE_CLOUD_PROJECT", "sandbox-426014"),
+            location="global"
+        )
+        
+        transcript_prompt = f"Generate a short, professional 50-word audio summary discussing this HR context: {context_summary}. The speakers are Dr. Anya (an HR expert) and Liam (an employee benefit specialist). Keep it friendly and informative."
+        
+        transcript_res = client.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=transcript_prompt
+        )
+        transcript_text = transcript_res.text if transcript_res and hasattr(transcript_res, 'text') else context_summary
+        
+        audio_config = types.GenerateContentConfig(
+            response_modalities=["AUDIO"],
+            speech_config=types.SpeechConfig(
+                multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
+                    speaker_voice_configs=[
+                        types.SpeakerVoiceConfig(speaker='Dr. Anya', voice_config=types.VoiceConfig(prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name='Kore'))),
+                        types.SpeakerVoiceConfig(speaker='Liam', voice_config=types.VoiceConfig(prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name='Puck')))
+                    ]
+                )
+            )
+        )
+        
+        audio_res = client.models.generate_content(
+            model="gemini-3.1-flash-tts-preview",
+            contents=transcript_text,
+            config=audio_config
+        )
+        
+        audio_bytes = None
+        if audio_res and hasattr(audio_res, 'candidates'):
+            for candidate in audio_res.candidates:
+                if hasattr(candidate, 'content') and candidate.content and candidate.content.parts:
+                    for part in candidate.content.parts:
+                        if hasattr(part, 'inline_data') and part.inline_data:
+                            audio_bytes = part.inline_data.data
+                            break
+                        elif hasattr(part, 'audio_data') and part.audio_data:
+                            audio_bytes = part.audio_data.audio_bytes
+                            break
+                            
+        if not audio_bytes:
+            return "Error: TTS model did not return audio bytes."
+            
+        import uuid
+        media_id = str(uuid.uuid4())
+        agent_root = os.environ.get("AGENT_URL", "")
+        
+        if not os.environ.get("K_SERVICE"):
+            local_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'media_cache')
+            os.makedirs(local_dir, exist_ok=True)
+            with open(os.path.join(local_dir, f"{media_id}.wav"), "wb") as f:
+                f.write(audio_bytes)
+            return f"{agent_root}/media/{media_id}.wav"
+            
+        from google.cloud import storage
+        storage_client = storage.Client(project="sandbox-426014")
+        bucket = storage_client.bucket("sandbox-426014-a2ui-media-cache")
+        blob = bucket.blob(f"generated_ads/{media_id}.wav")
+        blob.upload_from_string(audio_bytes, content_type="audio/wav")
+        return f"{agent_root}/media/{media_id}.wav"
+        
+    except Exception as e:
+        import traceback
+        print(f"AUDIO GEN FATAL ERROR: {traceback.format_exc()}")
+        return f"Audio generation explicitly failed against Vertex endpoint: {str(e)}."
+

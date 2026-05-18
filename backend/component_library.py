@@ -205,3 +205,17 @@ def product_selection(
           "ProductSelection": component_data
       }
   }
+
+def audio_player(
+    *, element_id: str, audio_url: str, description: str = "Audio Summary"
+) -> dict[str, Any]:
+  """Generates an AudioPlayer component."""
+  return {
+      "id": element_id,
+      "component": {
+          "AudioPlayer": {
+              "audio": {"literalString": audio_url},
+              "description": {"literalString": description},
+          }
+      },
+  }

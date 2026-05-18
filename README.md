@@ -121,6 +121,15 @@ Use these queries to run the demo flow:
 
 5. generate a team skill matrix graphic
 
+6. give me an audio summary
+
+---
+
+## Architectural Capabilities & Boundaries
+
+* **Declarative Mappers (100% Error-Free)**: When building core domain experiences (time off balances, HR profile overviews, audio podcast summaries), the agent maps tool outputs directly to Python component constructors (`cl.card()`, `cl.audio_player()`). This guarantees fully type-safe AST generation.
+* **Ad-Hoc Model UI Generation (Brittle but Flexible)**: When you ask the model for freeform ad-hoc widgets (`"give me a button"`, `"give me a dropdown"`), the model generates raw JSON from its weights. Because injecting the entire 500-line A2UI schema into the prompt is inefficient, our backend normalizer automatically transpiles common model syntax variations into valid A2UI structures on the fly.
+
 ---
 
 ## Unexplored A2UI Standard Capabilities

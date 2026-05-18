@@ -74,6 +74,26 @@ def build_image_card(data):
         cl.surface_update(surface_id="skills-surface", components=components)
     ]
 
+def build_audio_card(data):
+    """Constructs Native A2UI component tree for a standalone audio summary card."""
+    url = data.get('audio_url') if isinstance(data, dict) else data
+    if not url:
+        url = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+        
+    desc = data.get('transcript', "Executive Audio Summary") if isinstance(data, dict) else "Audio Summary"
+    
+    components = [
+        cl.card(element_id="audio-card", child="audio-col"),
+        cl.column(element_id="audio-col", children=["audio-title", "audio-player-root"]),
+        cl.text(element_id="audio-title", content="Audio Summary & Insights", usage_hint="h3"),
+        cl.audio_player(element_id="audio-player-root", audio_url=url, description=desc)
+    ]
+    return [
+        cl.begin_rendering(surface_id="canvas-surface", root="audio-card"),
+        cl.surface_update(surface_id="canvas-surface", components=components)
+    ]
+
+
 def build_product_table(data):
     """Constructs Native A2UI component tree for a product selection table."""
     columns = data.get('columns', [
