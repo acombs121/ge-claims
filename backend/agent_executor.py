@@ -238,19 +238,22 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
             steps = self._manifest.get("steps", [])
             import re
             q_text = getattr(self, '_current_query', '').lower() + " " + text_part.lower()
-            q_words = [w.rstrip('s') for w in re.findall(r'\w+', q_text) if len(w) > 2]
+            stop_words = {'how', 'many', 'have', 'the', 'for', 'let', 'look', 'show', 'give', 'and', 'with'}
+            q_words = set([w.rstrip('s') for w in re.findall(r'\w+', q_text) if len(w) > 2 and w not in stop_words])
+            
+            best_match_step = None
+            best_score = 0
             for step in steps:
                 triggers = step.get("trigger_queries", [])
                 for trigger in triggers:
-                    clean_t = trigger.lower().replace('?', '').replace('.', '').replace('!', '').strip()
-                    if clean_t in q_text:
-                        active_tool = step.get("action_tool")
-                        break
-                    t_words = [w.rstrip('s') for w in re.findall(r'\w+', clean_t) if len(w) > 2]
-                    if t_words and all(tw in q_words for tw in t_words):
-                        active_tool = step.get("action_tool")
-                        break
-                if active_tool: break
+                    t_words = set([w.rstrip('s') for w in re.findall(r'\w+', trigger.lower()) if len(w) > 2 and w not in stop_words])
+                    overlap = len(q_words.intersection(t_words))
+                    if overlap > best_score and overlap >= 1:
+                        best_score = overlap
+                        best_match_step = step
+            
+            if best_match_step:
+                active_tool = best_match_step.get("action_tool")
                 
             if active_tool and active_data is None:
                 for t in getattr(self._agent, 'tools', []):
@@ -338,9 +341,10 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
               
               match = clean_t in clean_q
               if not match:
-                  t_words = [w.rstrip('s') for w in re.findall(r'\w+', clean_t) if len(w) > 2]
-                  q_words = [w.rstrip('s') for w in re.findall(r'\w+', clean_q) if len(w) > 2]
-                  if t_words and all(tw in q_words for tw in t_words):
+                  stop_words = {'how', 'many', 'have', 'the', 'for', 'let', 'look', 'show', 'give', 'and', 'with'}
+                  t_words = set([w.rstrip('s') for w in re.findall(r'\w+', clean_t) if len(w) > 2 and w not in stop_words])
+                  q_words = set([w.rstrip('s') for w in re.findall(r'\w+', clean_q) if len(w) > 2 and w not in stop_words])
+                  if t_words and len(q_words.intersection(t_words)) >= len(t_words) - 1 and len(q_words.intersection(t_words)) >= 1:
                       match = True
                       
               if match:
