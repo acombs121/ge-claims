@@ -223,7 +223,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                       if isinstance(opts, list):
                           for opt in opts:
                               opt_str = opt.get("literalString", str(opt)) if isinstance(opt, dict) else str(opt)
-                              opt_nodes.append({"literalString": opt_str})
+                              opt_nodes.append({"label": {"literalString": opt_str}})
                       obj["MultipleChoice"] = {
                           "options": opt_nodes,
                           "selected": []
