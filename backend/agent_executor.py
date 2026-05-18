@@ -263,13 +263,29 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                                 t_node["text"] = {"literalString": t_node.pop("literalString")}
                         if "Button" in obj and isinstance(obj["Button"], dict):
                             b_node = obj["Button"]
+                            if "action" not in b_node:
+                                b_node["action"] = {"name": "button_clicked", "context": []}
                             if "child" not in b_node and "label" in b_node and c_list is not None:
                                 lbl = b_node.pop("label")
                                 l_str = lbl.get("literalString", "Button") if isinstance(lbl, dict) else str(lbl)
                                 b_node["child"] = "btn_child_txt"
                                 c_list.append({"id": "btn_child_txt", "component": {"Text": {"text": {"literalString": l_str}, "usageHint": "body"}}})
-                        for v in obj.values():
-                            normalize_ast(v, c_list)
+                        if any(k in obj for k in ["Select", "Dropdown", "DropdownMenu"]):
+                            sel = obj.pop("Select", None) or obj.pop("Dropdown", None) or obj.pop("DropdownMenu", None)
+                            opts = sel.get("options", ["Option A", "Option B"]) if isinstance(sel, dict) else ["Option A", "Option B"]
+                            if isinstance(opts, dict) and "explicitList" in opts: opts = opts["explicitList"]
+                            child_ids = []
+                            if c_list is not None and isinstance(opts, list):
+                                for idx, opt in enumerate(opts):
+                                    opt_str = opt.get("literalString", f"Option {idx+1}") if isinstance(opt, dict) else str(opt)
+                                    b_id = f"sel_btn_{idx}"
+                                    t_id = f"sel_txt_{idx}"
+                                    child_ids.append(b_id)
+                                    c_list.append({"id": b_id, "component": {"Button": {"child": t_id, "action": {"name": "select_option", "context": [{"id": f"opt_{idx}"}]}}}})
+                                    c_list.append({"id": t_id, "component": {"Text": {"text": {"literalString": opt_str}, "usageHint": "body"}}})
+                            obj["Column"] = {"children": {"explicitList": child_ids}}
+                        for v in list(obj.values()):
+                            if isinstance(v, (dict, list)): normalize_ast(v, c_list)
                     elif isinstance(obj, list):
                         for item in obj:
                             if isinstance(item, dict) and "surfaceUpdate" in item and isinstance(item["surfaceUpdate"], dict):
@@ -277,7 +293,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                                 if isinstance(comps, list):
                                     for c in comps: normalize_ast(c, comps)
                             else:
-                                normalize_ast(item, c_list)
+                                if isinstance(item, (dict, list)): normalize_ast(item, c_list)
                 normalize_ast(json_data)
                 llm_explicit_ui = json_data
                 
