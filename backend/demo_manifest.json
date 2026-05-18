@@ -6,7 +6,10 @@
         "how many vacation days do I have left?",
         "check my vacation",
         "vacation day left",
-        "vacation balance"
+        "vacation balance",
+        "vacation",
+        "benefits",
+        "time off"
       ],
       "action_tool": "get_benefits_summary",
       "output_mode": "native",
@@ -17,7 +20,10 @@
       "trigger_queries": [
         "let's look at my HR portal",
         "show my portal",
-        "hr portal"
+        "hr portal",
+        "portal",
+        "dashboard",
+        "overview"
       ],
       "action_tool": "get_hr_portal_overview",
       "output_mode": "iframe",
@@ -27,7 +33,9 @@
       "phase": 3,
       "trigger_queries": [
         "Enroll me in the Commuter Benefit",
-        "register for commuter benefit"
+        "register for commuter benefit",
+        "commuter",
+        "enroll"
       ],
       "action_tool": "register_benefit",
       "output_mode": "native",
@@ -37,7 +45,10 @@
       "phase": 4,
       "trigger_queries": [
         "help me prepare for my performance review",
-        "performance review prep"
+        "performance review prep",
+        "performance",
+        "review",
+        "prep"
       ],
       "action_tool": "get_performance_reviews",
       "output_mode": "iframe",
@@ -47,7 +58,9 @@
       "phase": 5,
       "trigger_queries": [
         "generate a team skill matrix graphic",
-        "create skill matrix"
+        "create skill matrix",
+        "skill",
+        "matrix"
       ],
       "action_tool": "generate_hr_graphic",
       "output_mode": "native",
