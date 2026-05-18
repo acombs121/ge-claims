@@ -40,8 +40,9 @@ sequenceDiagram
     end
 ```
 
-1. **Tier 1 (Fast-Path Interception)**: When an incoming query exactly matches a manifest trigger substring (ignoring punctuation), the server bypasses the LLM, executes the mapped ADK tool synchronously, and instantly emits the designated UI card.
-2. **Tier 2 (In-Memory Data Capture on LLM Fallback)**: When a query misses manifest triggers, it proceeds to the LLM for semantic tool selection. All ADK tools are wrapped at initialization; as any tool executes during the LLM turn, its raw data dictionary is captured directly into backend memory (`self._last_tool_data`). During payload packaging, the server matches the active tool against the manifest and passes the captured data directly to the designated UI mapper, guaranteeing flawless, zero-overhead UI hydration.
+1. **Stateless Manifest Interception (Tier 1)**: When an incoming query matches a manifest trigger sentence or its exact token stems, the server bypasses the LLM, executes the mapped ADK tool synchronously, and instantly emits the designated UI card.
+2. **Stateless LLM Fallback & Memory Capture (Tier 2)**: When a query misses manifest triggers, it proceeds to the LLM for semantic tool selection. All ADK tools are wrapped at initialization; as any tool executes during the LLM turn, its raw data dictionary is captured directly into backend memory (`self._executed_tool_data`). During payload packaging, the server matches the active tool against the manifest and passes the captured data directly to the designated UI mapper.
+3. **Stateless Semantic Jaccard Topic Matching (Tier 3)**: On follow-up conversational variations where the LLM answers from memory without calling a tool, the server executes a stateless Jaccard stem intersection match between the incoming text and manifest sentences. It synchronously invokes side-effect-free data tools to retrieve pristine data and guarantees flawless manifest UI hydration.
 
 ### Active Templates Mapping
 | Template Name | Description | Active Tools |

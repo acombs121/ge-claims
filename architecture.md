@@ -24,10 +24,12 @@ For scenarios where a low-overhead, native experience is preferred, we use a **C
 ### 3. Declarative Demo Manifest
 The `demo_manifest.json` file acts as the orchestration layer. It maps specific user queries to tools and defines the rendering strategy without hardcoding Python logic.
 
-### 4. Dual-Tier Execution Engine & In-Memory Data Capture
-To guarantee 100% reliable UI and data rendering across exact demo scripts and natural user variations, `agent_executor.py` operates a dual-tier architecture:
-*   **Tier 1 (Fast-Path Interception)**: When a user query matches a `trigger_queries` substring exactly (ignoring punctuation), the server instantly executes the mapped ADK tool synchronously and emits the UI card directly. Zero LLM latency.
-*   **Tier 2 (In-Memory Data Capture on LLM Fallback)**: When a query misses manifest triggers, the turn passes to the LLM for semantic tool selection. To eliminate JSON data truncation over chat streams, all registered ADK tools are dynamically wrapped upon initialization. Whenever any tool executes during an LLM turn, the wrapper captures the exact returned data dictionary directly in backend server memory (`self._last_tool_data`). During payload packaging, the server inspects the active tool against the manifest and passes the captured memory dictionary directly into the UI mapper (`native` or `iframe`), guaranteeing zero token overhead and flawless UI data hydration every single time.
+### 4. Stateless 5-Step Execution Engine (Jaccard Stem Engine)
+To guarantee 100% reliable UI and data rendering across exact demo scripts and unmapped follow-up conversational turns without relying on stateful session trackers or single-word keyword bandaids, `agent_executor.py` operates a completely stateless 5-step execution chain:
+1. **Stateless Manifest Interception (Tier 1)**: Incoming queries are evaluated via exact substring or regular expression token stem matching (`_handle_intercepted_action`). If all word stems match (e.g., `vacation`, `day`, `left`), the server synchronously executes the mapped ADK tool in Python and instantly emits the UI card. Zero LLM latency.
+2. **Stateless LLM Fallback & Memory Capture (Tier 2)**: When a query misses manifest triggers, the turn passes to the ADK LLM agent. To eliminate chat stream JSON echoing truncation, all registered ADK tools are dynamically wrapped. Whenever any tool executes during the LLM turn, the wrapper captures the exact returned data dictionary directly in backend server memory (`self._executed_tool_data`) and locks `self._executed_tool_name`. During payload packaging, the server inspects the active tool against the manifest and passes the captured memory dictionary directly into the UI mapper (`native` or `iframe`), guaranteeing flawless UI hydration.
+3. **Stateless Semantic Jaccard Topic Matching (Tier 3)**: When the user asks follow-up variations (*"vacations day left?"*) and the ADK LLM agent answers directly from its conversational memory without calling any tool (`active_tool` is `None`), the server executes a stateless Jaccard set similarity match. It strips conversational stop words (`{'how', 'many', 'have', 'the', 'for', 'let', 'look', 'show', 'give'}`) and evaluates set intersection between incoming text stems and each manifest step. If the Jaccard overlap score >= 1, it sets the mapped topic (e.g., `get_benefits_summary`). Because our pure data tools are side-effect-free read operations against static JSON files, the server synchronously executes the tool in Python (<1ms) to retrieve `active_data` and deterministically renders the manifest UI (`build_benefits_card`)!
+4. **Stateless Resolution for Unmapped Turns (Tier 4 & 5)**: If the query misses all manifest topics entirely (*"Tell me a joke"*), `manifest_handled` remains `False`. The server naturally evaluates whether the LLM outputted a `CustomView` dashboard (`find_custom_view`). If found, it mounts the dashboard. If not, it renders standard conversational text.
 
 ## 2.5 Declarative UI Philosophy & Cascading Decision Tree
 
@@ -254,8 +256,8 @@ When cloning this repository for a new customer, industry, or use case (e.g., cl
 
 ### Step 4: Declarative Orchestration (`demo_manifest.json`)
 1.  Completely update `demo_manifest.json` with the new demo steps.
-2.  For each step, define concise, robust keywords in `trigger_queries`, link the `action_tool`, and specify the `output_mode` (`native`, `iframe`, `url`) and target `native_mapper` or `template`.
-3.  *Note: The tool wrapper in `agent_executor.py` will automatically capture executed tool data in memory for both exact matches and LLM fallback turns.*
+2.  For each step, define clean, natural sample trigger sentences in `trigger_queries` (e.g., `"how many vacation days do I have left?"`). Avoid adding single-word keyword crutches (like `"vacation"`).
+3.  *Note: The stateless Jaccard stem engine in `agent_executor.py` will automatically evaluate stem overlap across all follow-up conversational variations, ensuring flawless topic switching without requiring stateful tracking.*
 
 ### Step 5: Meta-Files, Branding & Verification
 1.  Stage new logos or visual assets in `backend/data/logos/` and run `python3 backend/upload_logos.py` to cache them in GCS.
