@@ -29,6 +29,12 @@
             filter: saturate(1.15);
         }
         
+        /* Prevent default Leaflet white square/black border background overlays */
+        .custom-div-icon {
+            background: transparent !important;
+            border: none !important;
+        }
+        
         /* High-contrast dynamic color inversion for Light Theme map backgrounds! */
         [data-theme="light"] .clouds-tile-layer {
             filter: invert(0.85) contrast(1.85) brightness(0.8); /* Dark/slate pronounced clouds */
@@ -311,7 +317,7 @@
                     
                     const poiIcon = L.divIcon({
                         html: poiHtml,
-                        className: '',
+                        className: 'custom-div-icon',
                         iconSize: [10, 10],
                         iconAnchor: [5, 5]
                     });
@@ -373,7 +379,7 @@
                     
                     const customIcon = L.divIcon({
                         html: iconHtml,
-                        className: '',
+                        className: 'custom-div-icon',
                         iconSize: [dotSize, dotSize],
                         iconAnchor: [dotSize/2, dotSize/2]
                     });
