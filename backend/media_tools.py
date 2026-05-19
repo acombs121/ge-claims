@@ -23,9 +23,13 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
         return "Error: google-genai SDK is not installed or available."
     
     try:
+        from google.cloud import storage
+        storage_client = storage.Client()
+        resolved_project = storage_client.project or os.environ.get("GOOGLE_CLOUD_PROJECT", "YOUR_GCP_PROJECT_ID")
+        
         client = genai.Client(
             vertexai=True,
-            project=os.environ.get("GOOGLE_CLOUD_PROJECT", "YOUR_GCP_PROJECT_ID"),
+            project=resolved_project,
             location="global"
         )
 
@@ -182,9 +186,13 @@ async def generate_synthetic_audio(context_summary: str, tool_context: ToolConte
         return "Error: google-genai SDK is not installed or available."
         
     try:
+        from google.cloud import storage
+        storage_client = storage.Client()
+        resolved_project = storage_client.project or os.environ.get("GOOGLE_CLOUD_PROJECT", "YOUR_GCP_PROJECT_ID")
+        
         client = genai.Client(
             vertexai=True,
-            project=os.environ.get("GOOGLE_CLOUD_PROJECT", "YOUR_GCP_PROJECT_ID"),
+            project=resolved_project,
             location="global"
         )
 
