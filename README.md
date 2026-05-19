@@ -108,7 +108,7 @@ This repository is built as a highly modular, reusable seed template. To clone a
 ### 1. Clone the Repository
 Clone the template codebase into your new custom repository name:
 ```bash
-git clone https://github.com/rtejada-g/a2ui-seed-agent.git your-custom-agent
+git clone https://github.com/cloud-ai-transformation-team/a2ui-seed-agent.git your-custom-agent
 cd your-custom-agent
 ```
 
