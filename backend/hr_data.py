@@ -277,17 +277,17 @@ def get_map_visualization(intent: str = "interactive", route_type: str = "shorte
     try:
         import requests
         lat, lng = map_data.get("center", [42.3601, -71.0589])
-        overpass_url = "https://overpass-api.de/api/interpreter"
+        overpass_url = "https://overpass.osm.ch/api/interpreter"
         overpass_query = f"""
-        [out:json][timeout:2];
+        [out:json][timeout:4];
         (
-          node["amenity"="restaurant"](around:1200,{lat},{lng});
-          node["amenity"="cafe"](around:1200,{lat},{lng});
-          node["shop"](around:1200,{lat},{lng});
+          node["amenity"="restaurant"](around:2000,{lat},{lng});
+          node["amenity"="cafe"](around:2000,{lat},{lng});
+          node["shop"](around:2000,{lat},{lng});
         );
         out body 15;
         """
-        r_pois = requests.post(overpass_url, data={"data": overpass_query}, timeout=2.5)
+        r_pois = requests.post(overpass_url, data={"data": overpass_query}, timeout=4.5)
         if r_pois.status_code == 200:
             pois_data = r_pois.json()
             if pois_data.get("elements"):
