@@ -272,38 +272,45 @@ def get_map_visualization(intent: str = "interactive", route_type: str = "shorte
         map_data["routes"]["account_priority"] = r2
         
 
-    # Fetch local OpenStreetMap POIs (restaurants, cafes, shops) using free Overpass API (connect-src 'none' compliant)
+    # Fetch local POIs (restaurants, cafes, shops) using official, secure Google Places Nearby Search (100% allowlisted in GCP Cloud Run!)
     map_data["local_pois"] = []
     try:
         import requests
         lat, lng = map_data.get("center", [42.3601, -71.0589])
-        overpass_url = "https://overpass.osm.ch/api/interpreter"
-        overpass_query = f"""
-        [out:json][timeout:4];
-        (
-          node["amenity"="restaurant"](around:2000,{lat},{lng});
-          node["amenity"="cafe"](around:2000,{lat},{lng});
-          node["shop"](around:2000,{lat},{lng});
-        );
-        out body 15;
-        """
-        r_pois = requests.post(overpass_url, data={"data": overpass_query}, timeout=4.5)
-        if r_pois.status_code == 200:
-            pois_data = r_pois.json()
-            if pois_data.get("elements"):
-                for elem in pois_data["elements"]:
+        if api_key:
+            places_url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+            params = {
+                "location": f"{lat},{lng}",
+                "radius": 2000,
+                "type": "restaurant|cafe|store",
+                "key": api_key
+            }
+            r_pois = requests.get(places_url, params=params, timeout=3.5)
+            if r_pois.status_code == 200:
+                places_data = r_pois.json()
+                for place in places_data.get("results", [])[:15]:
+                    loc = place.get("geometry", {}).get("location", {})
+                    types_list = place.get("types", [])
+                    p_type = "shop"
+                    if "restaurant" in types_list or "food" in types_list:
+                        p_type = "restaurant"
+                    elif "cafe" in types_list or "bakery" in types_list:
+                        p_type = "cafe"
                     poi = {
-                        "lat": elem.get("lat"),
-                        "lng": elem.get("lon"),
-                        "name": elem.get("tags", {}).get("name", "Local POI"),
-                        "type": elem.get("tags", {}).get("amenity") or elem.get("tags", {}).get("shop") or "shop",
-                        "cuisine": elem.get("tags", {}).get("cuisine", "")
+                        "lat": loc.get("lat"),
+                        "lng": loc.get("lng"),
+                        "name": place.get("name", "Local Business"),
+                        "type": p_type,
+                        "cuisine": ""
                     }
                     map_data["local_pois"].append(poi)
+        else:
+            # Local runs without Maps API key fallback immediately to default mock list
+            raise ValueError("GOOGLE_MAPS_API_KEY not set in server environment.")
     except Exception as poi_err:
         # Bubble up exception for custom queries, only use fallback for default Boston Common demo (avoids silent fails!)
         if "boston" in location.lower():
-            logger.warning(f"Server Overpass POI fetch encountered an error, using Boston mock overlays: {poi_err}")
+            logger.warning(f"Google Places API query encountered an error, falling back to Boston mocks: {poi_err}")
             lat, lng = map_data.get("center", [42.3601, -71.0589])
             map_data["local_pois"] = [
                 {"lat": lat + 0.0025, "lng": lng + 0.003, "name": "The Daily Grind Cafe", "type": "cafe", "cuisine": "Coffee"},
@@ -311,7 +318,7 @@ def get_map_visualization(intent: str = "interactive", route_type: str = "shorte
                 {"lat": lat + 0.004, "lng": lng - 0.0015, "name": "Beacon Boutique", "type": "shop", "cuisine": ""}
             ]
         else:
-            logger.error(f"Overpass POI request explicitly failed for custom query '{location}': {poi_err}")
+            logger.error(f"Google Places API nearbysearch failed for custom location '{location}': {poi_err}")
             raise poi_err
             
     return map_data
