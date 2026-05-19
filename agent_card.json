@@ -1,7 +1,7 @@
 {
-  "name": "Aon HR Agent",
-  "description": "HR agent. Handles employee benefits and wellness operations.",
-  "url": "https://aon-hr-agent-157865322412.us-central1.run.app",
+  "name": "a2ui_seed_agent",
+  "description": "A2UI Seed Agent demonstrating dynamic widgets, custom interactive Leaflet overlays, Vega charts, organization networks, and WAV audio podcast briefings.",
+  "url": "https://a2ui-seed-agent-YOUR_PROJECT_NUMBER.us-central1.run.app",
   "version": "1.0.0",
   "protocolVersion": "0.3.0",
   "preferredTransport": "JSONRPC",
@@ -30,55 +30,55 @@
   },
   "skills": [
     {
-      "id": "hr_portal_overview",
-      "name": "HR Portal & Org Chart Access",
-      "description": "Retrieves employee profile, security context, and renders the organization hierarchy graph.",
+      "id": "standard_widgets_showcase",
+      "name": "Standard A2UI Components Showcase",
+      "description": "Renders and displays native A2UI standard components like Tabs, Modals, TextFields, CheckBoxes, MultipleChoices, and Sliders.",
       "tags": [
-        "profile",
-        "org-chart",
-        "portal"
+        "widgets",
+        "components",
+        "native"
       ],
       "examples": [
-        "let's look at my HR portal"
+        "let's see standard widgets overview"
       ]
     },
     {
-      "id": "performance_review_synthesis",
-      "name": "Performance Review Synthesis",
-      "description": "Synthesizes performance data, calculates competency scores, and generates a radar chart.",
+      "id": "interactive_maps_overlay",
+      "name": "High-Fidelity Geographic Map Overlays",
+      "description": "Generates and layers density heatmaps, pulsing radar markers, animated polylines, and toggle layers dynamically.",
       "tags": [
-        "performance",
-        "review",
-        "chart"
+        "maps",
+        "leaflet",
+        "routing"
       ],
       "examples": [
-        "help me prepare for my performance review"
+        "show map visualization"
       ]
     },
     {
-      "id": "benefits_summary",
-      "name": "Benefits & Vacation Summary",
-      "description": "Retrieves active enrollments and tracks vacation days usage.",
+      "id": "universal_dashboard_metrics",
+      "name": "Universal Metric Dashboard and Graphs",
+      "description": "Visualizes org hierarchy network graphs, interactive sliders, KPI cards, and Vega-Lite graphs.",
       "tags": [
-        "benefits",
-        "vacation",
-        "time-off"
+        "dashboard",
+        "d3-network",
+        "charts"
       ],
       "examples": [
-        "how many vacation days do I have left?"
+        "show universal dashboard"
       ]
     },
     {
-      "id": "benefit_registration",
-      "name": "Benefit Registration Action",
-      "description": "Enrolls employees in benefits and logs audit trails to cloud systems.",
+      "id": "seekable_audio_tts",
+      "name": "Transcoded Speech WAV Summarizer",
+      "description": "Synthesizes 150-word briefings seekable natively in browser players.",
       "tags": [
-        "enrollment",
-        "workday",
-        "audit"
+        "audio",
+        "tts",
+        "podcast"
       ],
       "examples": [
-        "Enroll me in the Commuter Benefit"
+        "give me an audio summary"
       ]
     }
   ]

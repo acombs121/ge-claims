@@ -126,7 +126,7 @@
             padding: 16px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        .main-grid > .panel:last-child:nth-child(odd) {
+        .main-grid > .panel:last-child:nth-child(odd), .panel.full-width {
             grid-column: 1 / -1;
         }
         .panel-header {
@@ -247,6 +247,9 @@
             gridLayout.forEach(panelData => {
                 const panel = document.createElement('div');
                 panel.className = 'panel';
+                if (panelData.fullWidth || panelData.type === 'simulator') {
+                    panel.classList.add('full-width');
+                }
                 
                 if (panelData.title) {
                     const header = document.createElement('div');
@@ -464,13 +467,13 @@
                 } else if (panelData.type === 'simulator') {
                     const canvasId = 'simChart_' + (chartIndex++);
                     const container = document.createElement('div');
-                    container.style = `display: flex; gap: 20px; height: ${isStandalone?'calc(100vh - 90px)':'500px'};`;
+                    container.style = `display: flex; flex-wrap: wrap; gap: 20px; align-items: stretch;`;
                     
                     const controlsDiv = document.createElement('div');
-                    controlsDiv.style = `flex: 1; min-width: 200px; padding: 16px; background: ${isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'}; border-radius: 8px; overflow-y: auto; border: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};`;
+                    controlsDiv.style = `flex: 1; min-width: 220px; padding: 12px 16px; background: ${isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'}; border-radius: 8px; border: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};`;
                     
                     const title = document.createElement('h4');
-                    title.style = "margin-top: 0; margin-bottom: 16px; font-size: 0.9rem; letter-spacing: 0.05em; text-transform: uppercase;";
+                    title.style = "margin-top: 0; margin-bottom: 12px; font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase;";
                     title.textContent = "Variables";
                     controlsDiv.appendChild(title);
                     
@@ -511,7 +514,7 @@
                     });
                     
                     const chartDiv = document.createElement('div');
-                    chartDiv.style = "flex: 2; position: relative;";
+                    chartDiv.style = "flex: 2; min-width: 280px; position: relative; height: 220px;";
                     const canvas = document.createElement('canvas');
                     canvas.id = canvasId;
                     chartDiv.appendChild(canvas);

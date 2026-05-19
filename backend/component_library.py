@@ -163,7 +163,7 @@ def begin_rendering(
   }
 
 def web_frame_url(
-    *, element_id: str, url: str
+    *, element_id: str, url: str, height: int = 450
 ) -> dict[str, Any]:
   """Generates a WebFrameUrl component for allowlisted external iframes."""
   return {
@@ -171,6 +171,7 @@ def web_frame_url(
       "component": {
           "WebFrameUrl": {
               "url": {"literalString": url},
+              "height": height,
           }
       },
   }
@@ -221,61 +222,74 @@ def audio_player(
   }
 
 def tabs(*, element_id: str, titles: list[str], children: list[str], selected: int = 0) -> dict[str, Any]:
-  """Generates a Tabs component."""
+  """Generates a Tabs component conforming to A2UI schema."""
+  tab_items = []
+  for t, child_id in zip(titles, children):
+      tab_items.append({
+          "title": {"literalString": str(t)},
+          "child": child_id
+      })
   return {
       "id": element_id,
       "component": {
           "Tabs": {
-              "titles": [{"literalString": str(t)} for t in titles],
-              "selected": selected,
-              "children": {"explicitList": children},
+              "tabItems": tab_items
           }
       },
   }
 
 def modal(*, element_id: str, entry_id: str, content_id: str) -> dict[str, Any]:
-  """Generates a Modal component."""
+  """Generates a Modal component conforming to A2UI schema."""
   return {
       "id": element_id,
       "component": {
           "Modal": {
-              "entry": entry_id,
-              "content": content_id,
+              "entryPointChild": entry_id,
+              "contentChild": content_id,
           }
       },
   }
 
-def multiple_choice(*, element_id: str, options: list[str], selected: list[int] = None) -> dict[str, Any]:
-  """Generates a MultipleChoice component."""
+def multiple_choice(*, element_id: str, options: list[str], selected: list[str] = None) -> dict[str, Any]:
+  """Generates a MultipleChoice component conforming to A2UI schema."""
   return {
       "id": element_id,
       "component": {
           "MultipleChoice": {
-              "options": [{"label": {"literalString": str(opt)}} for opt in options],
-              "selections": selected or [],
+              "options": [
+                  {
+                      "label": {"literalString": str(opt)},
+                      "value": str(opt)
+                  } for idx, opt in enumerate(options)
+              ],
+              "selections": {"path": f"/{element_id}_state"},
+              "maxAllowedSelections": 1
           }
       },
   }
 
-def checkbox(*, element_id: str, label: str, checked: bool = False) -> dict[str, Any]:
-  """Generates a CheckBox component."""
+def checkbox(*, element_id: str, label: str, checked: bool = False, path: str = "") -> dict[str, Any]:
+  """Generates a CheckBox component conforming to A2UI schema."""
+  val_node = {"path": path} if path else {"literalBoolean": checked}
   return {
       "id": element_id,
       "component": {
           "CheckBox": {
               "label": {"literalString": label},
-              "checked": checked,
+              "value": val_node,
           }
       },
   }
 
-def text_field(*, element_id: str, label: str = "", placeholder: str = "", value: str = "", action_name: str = "") -> dict[str, Any]:
-  """Generates a TextField component."""
-  tf_data = {}
-  if label: tf_data["label"] = {"literalString": label}
-  if placeholder: tf_data["placeholder"] = {"literalString": placeholder}
-  if value: tf_data["value"] = {"literalString": value}
-  if action_name: tf_data["action"] = {"name": action_name, "context": []}
+def text_field(*, element_id: str, label: str = "", value: str = "", text_field_type: str = "shortText") -> dict[str, Any]:
+  """Generates a TextField component conforming to A2UI schema."""
+  tf_data = {
+      "label": {"literalString": label or "Input"},
+  }
+  if value:
+      tf_data["text"] = {"literalString": value}
+  if text_field_type:
+      tf_data["textFieldType"] = text_field_type
   return {
       "id": element_id,
       "component": {
@@ -283,18 +297,16 @@ def text_field(*, element_id: str, label: str = "", placeholder: str = "", value
       }
   }
 
-def slider(*, element_id: str, label: str = "", min_val: float = 0, max_val: float = 100, value: float = 50, step: float = 1) -> dict[str, Any]:
-  """Generates a Slider component."""
-  sl_data = {
-      "min": {"literalNumber": min_val},
-      "max": {"literalNumber": max_val},
-      "value": {"literalNumber": value},
-      "step": {"literalNumber": step},
-  }
-  if label: sl_data["label"] = {"literalString": label}
+def slider(*, element_id: str, min_val: float = 0, max_val: float = 100, value: float = 50) -> dict[str, Any]:
+  """Generates a Slider component conforming to A2UI schema."""
   return {
       "id": element_id,
       "component": {
-          "Slider": sl_data
-      }
+          "Slider": {
+              "value": {"literalNumber": value},
+              "minValue": min_val,
+              "maxValue": max_val,
+          }
+      },
   }
+

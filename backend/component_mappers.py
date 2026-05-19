@@ -123,3 +123,122 @@ def build_product_table(data):
         cl.begin_rendering(surface_id="canvas-surface", root="product-sel-root"),
         cl.surface_update(surface_id="canvas-surface", components=components)
     ]
+
+def build_showcase_widgets_card(data):
+    """Constructs Native A2UI 0.8 components showcase card containing Tabs, Modal, Inputs, Choices, and Buttons."""
+    widgets = data.get("widgets", {})
+    title = widgets.get("title", "A2UI Showcase")
+    desc = widgets.get("description", "Capability Showcase")
+    
+    dropdown_choices = data.get("dropdown_choices", ["A", "B"])
+    checkboxes = data.get("checkboxes", [])
+    slider_val = data.get("slider_value", 50)
+    slider_min = data.get("slider_min", 0)
+    slider_max = data.get("slider_max", 100)
+    modal_content = data.get("modal_content", {})
+    
+    # Active state rehydration values
+    state = data.get("state", {})
+    active_ref = state.get("tf_name_state", "Alex Carter")
+    active_key = state.get("tf_key_state", "ENT-9842-XYZ")
+    active_slider = float(state.get("slider_1_state", slider_val))
+    active_choice = state.get("dropdown_state", dropdown_choices[0])
+    
+    components = []
+    
+    # Base wrapper card & base column
+    components.append(cl.card(element_id="showcase-card", child="showcase-col"))
+    components.append(cl.column(element_id="showcase-col", children=[
+        "header-row", "desc-text", "div-mid", "showcase-tabs", "div-low", "action-row"
+    ]))
+    
+    # Header Row
+    components.append(cl.row(element_id="header-row", children=["header-icon", "header-title"], distribution="center"))
+    components.append(cl.icon(element_id="header-icon", name="settings"))
+    components.append(cl.text(element_id="header-title", content=title, usage_hint="h3"))
+    components.append(cl.text(element_id="desc-text", content=desc, usage_hint="caption"))
+    components.append(cl.divider(element_id="div-mid"))
+    
+    # Tabs section separating three sheets
+    components.append(cl.tabs(
+        element_id="showcase-tabs",
+        titles=["Form Inputs", "Picklists & Check", "Modal Popup"],
+        children=["tab-inputs-col", "tab-picks-col", "tab-overlay-col"]
+    ))
+    
+    # Tab 1: Form Inputs (TextFields + Sliders)
+    components.append(cl.column(element_id="tab-inputs-col", children=[
+        "tf-ref-title", "tf_name", "tf-key-title", "tf_key", "slider-title", "slider_1"
+    ]))
+    components.append(cl.text(element_id="tf-ref-title", content="Reference Tag", usage_hint="caption"))
+    components.append(cl.text_field(element_id="tf_name", label="Enter reference name...", value=active_ref))
+    components.append(cl.text(element_id="tf-key-title", content="Security ID", usage_hint="caption"))
+    components.append(cl.text_field(element_id="tf_key", label="Enter identifier...", value=active_key))
+    components.append(cl.text(element_id="slider-title", content="Capacity Scale Limit", usage_hint="caption"))
+    components.append(cl.slider(element_id="slider_1", min_val=slider_min, max_val=slider_max, value=active_slider))
+    
+    # Tab 2: Choices & Picklists
+    components.append(cl.column(element_id="tab-picks-col", children=[
+        "choice-title", "dropdown", "chk-title", "chk_options"
+    ]))
+    components.append(cl.text(element_id="choice-title", content="Select Container Mode", usage_hint="caption"))
+    
+    # Premium card-wrapped MultipleChoice select dropdown
+    mc = cl.multiple_choice(element_id="dropdown", options=dropdown_choices)
+    # CRITICAL: Force selection properties matching A2UI 0.8 React standard
+    mc["component"]["MultipleChoice"]["selections"] = {"path": "/dropdown_state"}
+    mc["component"]["MultipleChoice"]["maxAllowedSelections"] = 1
+    # Pre-select active choice from state
+    for opt in mc["component"]["MultipleChoice"]["options"]:
+        if opt["value"] == active_choice:
+            mc["component"]["MultipleChoice"]["selections"]["literalString"] = active_choice
+            
+    components.append(mc)
+    
+    components.append(cl.text(element_id="chk-title", content="Enforce Infrastructure Rules", usage_hint="caption"))
+    
+    # Renders beautiful, native checkboxes using multiselect MultipleChoice
+    mc_chk = cl.multiple_choice(element_id="chk_options", options=["Establish Sandbox VPC Boundary", "Enforce Secure SSL/TLS Channels"])
+    mc_chk["component"]["MultipleChoice"]["selections"] = {"path": "/chk_options_state"}
+    mc_chk["component"]["MultipleChoice"]["maxAllowedSelections"] = 5 # Enables native checkboxes list rendering!
+    
+    # Pre-check state values
+    active_chks = state.get("chk_options_state", ["Enforce Secure SSL/TLS Channels"])
+    mc_chk["component"]["MultipleChoice"]["selections"]["literalArray"] = active_chks
+    components.append(mc_chk)
+    
+    # Tab 3: Modal Popup Container
+    components.append(cl.column(element_id="tab-overlay-col", children=["modal-hint", "modal-trigger-card", "modal_showcase"]))
+    components.append(cl.text(element_id="modal-hint", content="Triggers a native popup overlay modal dialog box.", usage_hint="body"))
+    
+    # Clickable Card serving as EntryPoint to Modal overlay (prevents redundant server actions)
+    components.append(cl.card(element_id="modal-trigger-card", child="modal-trigger-txt"))
+    components.append(cl.text(element_id="modal-trigger-txt", content="Launch Architecture Insight ↗", usage_hint="body"))
+    
+    # The Modal itself
+    components.append(cl.modal(element_id="modal_showcase", entry_id="modal-trigger-card", content_id="modal-content-card"))
+    
+    # Modal popup content card structure
+    components.append(cl.card(element_id="modal-content-card", child="modal-content-col"))
+    components.append(cl.column(element_id="modal-content-col", children=["modal-content-title", "modal-content-body"]))
+    components.append(cl.text(element_id="modal-content-title", content=modal_content.get("title", "Insight"), usage_hint="h4"))
+    components.append(cl.text(element_id="modal-content-body", content=modal_content.get("body", ""), usage_hint="body"))
+    
+    components.append(cl.divider(element_id="div-low"))
+    
+    # Bottom Row Action Buttons
+    components.append(cl.row(element_id="action-row", children=["btn_save_state", "btn_load_state"], distribution="spaceBetween"))
+    
+    # Save state action
+    save_btn = cl.button(element_id="btn_save_state", label="Save Active Selection", action_name="save_widget_selection", context=[], primary=True)
+    components.extend(save_btn)
+    
+    # Load state action
+    load_btn = cl.button(element_id="btn_load_state", label="Load Last Run", action_name="load_widget_selection", context=[], primary=False)
+    components.extend(load_btn)
+    
+    return [
+        cl.begin_rendering(surface_id="canvas-surface", root="showcase-card"),
+        cl.surface_update(surface_id="canvas-surface", components=components)
+    ]
+

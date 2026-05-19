@@ -3,66 +3,91 @@
     {
       "phase": 1,
       "trigger_queries": [
-        "how many vacation days do I have left?",
-        "check my vacation",
-        "vacation day left",
-        "vacation balance"
+        "let's see standard widgets overview",
+        "show standard widgets",
+        "widget showcase",
+        "A2UI standard components"
       ],
-      "action_tool": "get_benefits_summary",
+      "fuzzy_matching": true,
+      "action_tool": "get_standard_widgets_overview",
       "output_mode": "native",
-      "native_mapper": "build_benefits_card"
+      "native_mapper": "build_showcase_widgets_card"
     },
     {
       "phase": 2,
       "trigger_queries": [
-        "let's look at my HR portal",
-        "show my portal",
-        "hr portal"
+        "show map visualization",
+        "interactive leaflet map",
+        "load maps demo",
+        "route optimization map"
       ],
-      "action_tool": "get_hr_portal_overview",
+      "fuzzy_matching": true,
+      "action_tool": "get_map_visualization",
       "output_mode": "iframe",
-      "template": "workday_portal"
+      "template": "base_map"
+    },
+    {
+      "phase": 2.5,
+      "trigger_queries": [
+        "give me a simple google map",
+        "simple map URL"
+      ],
+      "fuzzy_matching": true,
+      "action_tool": "get_map_visualization",
+      "action_tool_args": {
+        "intent": "simple"
+      },
+      "output_mode": "url"
     },
     {
       "phase": 3,
       "trigger_queries": [
-        "Enroll me in the Commuter Benefit",
-        "register for commuter benefit"
+        "show universal dashboard",
+        "show the universal dashboard",
+        "kpi simulator dashboard"
       ],
-      "action_tool": "register_benefit",
-      "output_mode": "native",
-      "native_mapper": "build_confirmation_card"
+      "fuzzy_matching": true,
+      "action_tool": "get_universal_dashboard_data",
+      "output_mode": "iframe",
+      "template": "universal_dashboard"
+    },
+    {
+      "phase": 3.5,
+      "trigger_queries": [
+        "load D3 network dashboard"
+      ],
+      "fuzzy_matching": true,
+      "action_tool": "get_d3_network_data",
+      "output_mode": "iframe",
+      "template": "dashboard"
     },
     {
       "phase": 4,
       "trigger_queries": [
-        "help me prepare for my performance review",
-        "performance review prep"
+        "give me an audio summary",
+        "podcast voice briefing",
+        "audio presentation summary"
       ],
-      "action_tool": "get_performance_reviews",
-      "output_mode": "iframe",
-      "template": "workday_portal"
+      "fuzzy_matching": false,
+      "action_tool": "generate_audio_summary",
+      "output_mode": "native",
+      "native_mapper": "build_audio_card",
+      "audio_config": {
+        "mode": "podcast",
+        "voices": ["Aoede", "Charon"],
+        "speakers": ["Host", "Expert"]
+      }
     },
     {
       "phase": 5,
       "trigger_queries": [
-        "generate a team skill matrix graphic",
-        "create skill matrix"
+        "generate custom visual graphic",
+        "multimodal image generation"
       ],
+      "fuzzy_matching": false,
       "action_tool": "generate_hr_graphic",
       "output_mode": "native",
       "native_mapper": "build_image_card"
-    },
-    {
-      "phase": 6,
-      "trigger_queries": [
-        "give me an audio summary",
-        "audio summary of my profile",
-        "podcast summary"
-      ],
-      "action_tool": "generate_audio_summary",
-      "output_mode": "native",
-      "native_mapper": "build_audio_card"
     }
   ]
 }

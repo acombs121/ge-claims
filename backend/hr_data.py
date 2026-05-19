@@ -212,8 +212,8 @@ def register_benefit(benefit_name: str):
     
     import datetime
     timestamp = datetime.datetime.now(datetime.UTC).isoformat() + "Z"
-    print(f"\n[AGENT_PLATFORM] Agent 'aon_hr_agent' performed action 'register_benefit' for benefit '{benefit_name}' for user '{user_name}' ({user_id}) at {timestamp}\n")
-    logger.info(f"[AGENT_PLATFORM] Agent 'aon_hr_agent' performed action 'register_benefit' for benefit '{benefit_name}' for user '{user_name}' ({user_id}) at {timestamp}")
+    print(f"\n[AGENT_PLATFORM] Agent 'a2ui_seed_agent' performed action 'register_benefit' for benefit '{benefit_name}' for user '{user_name}' ({user_id}) at {timestamp}\n")
+    logger.info(f"[AGENT_PLATFORM] Agent 'a2ui_seed_agent' performed action 'register_benefit' for benefit '{benefit_name}' for user '{user_name}' ({user_id}) at {timestamp}")
     
     state = _read_state()
     pending = state.get('pending_registrations', [])
@@ -226,3 +226,230 @@ def register_benefit(benefit_name: str):
         "benefit_name": benefit_name,
         "message": f"Successfully requested registration for: {benefit_name}"
     }
+
+def get_standard_widgets_overview():
+    """Loads and returns pre-wired dummy data for A2UI 0.8 Standard Components showcase. Throws FileNotFoundError if configuration is missing."""
+    path = os.path.join(DATA_DIR, "showcase_widgets.json")
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Critical seed widgets configuration missing: {path}")
+    
+    with open(path, "r") as f:
+        return json.load(f)
+
+def get_map_visualization(intent: str = "interactive", route_type: str = "shortest_distance", location: str = "Boston Common, Boston, MA"):
+    """Calculates and returns optimized map parameters. Uses public URL search query embeds or Leaflet road network overlays. Queries Google Directions API at runtime for Leaflet routes if key is available."""
+    # Re-read maps API key which is loaded dynamically from .env
+    api_key = os.environ.get("GOOGLE_MAPS_API_KEY") or ""
+    
+    if intent == "simple" or intent == "url":
+        import urllib.parse
+        encoded_q = urllib.parse.quote(location)
+        # Secure, standard key-free Google Maps sharing iframe search mode
+        # Devoid of key parameters (never throws 403 API not activated) and 100% allowlisted globally (never blocked by frame CSP)
+        return {
+            "url": f"https://www.google.com/maps?q={encoded_q}&output=embed"
+        }
+    
+    # High-fidelity Leaflet custom map rendering coordinates and config
+    path = os.path.join(DATA_DIR, "map_showcase.json")
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Critical geographic mapping dataset missing: {path}")
+    
+    with open(path, "r") as f:
+        map_data = json.load(f)
+        
+    # Dynamically calculate high-fidelity street direction paths using live Directions API
+    from route_tools import get_accurate_route_google
+    
+    # Route 1: Downtown Boston Node A to Back Bay Node B
+    r1 = get_accurate_route_google(origin_str="42.3620,-71.0570", destination_str="42.3590,-71.0600")
+    # Route 2: Downtown Boston Node A to North End Node C
+    r2 = get_accurate_route_google(origin_str="42.3620,-71.0570", destination_str="42.3650,-71.0520")
+    
+    if r1 and "coordinates" in r1:
+        map_data["routes"]["shortest_distance"] = r1
+    if r2 and "coordinates" in r2:
+        map_data["routes"]["account_priority"] = r2
+        
+
+    # Fetch local OpenStreetMap POIs (restaurants, cafes, shops) using free Overpass API (connect-src 'none' compliant)
+    map_data["local_pois"] = []
+    try:
+        import requests
+        lat, lng = map_data.get("center", [42.3601, -71.0589])
+        overpass_url = "https://overpass-api.de/api/interpreter"
+        overpass_query = f"""
+        [out:json][timeout:2];
+        (
+          node["amenity"="restaurant"](around:1200,{lat},{lng});
+          node["amenity"="cafe"](around:1200,{lat},{lng});
+          node["shop"](around:1200,{lat},{lng});
+        );
+        out body 15;
+        """
+        r_pois = requests.post(overpass_url, data={"data": overpass_query}, timeout=2.5)
+        if r_pois.status_code == 200:
+            pois_data = r_pois.json()
+            if pois_data.get("elements"):
+                for elem in pois_data["elements"]:
+                    poi = {
+                        "lat": elem.get("lat"),
+                        "lng": elem.get("lon"),
+                        "name": elem.get("tags", {}).get("name", "Local POI"),
+                        "type": elem.get("tags", {}).get("amenity") or elem.get("tags", {}).get("shop") or "shop",
+                        "cuisine": elem.get("tags", {}).get("cuisine", "")
+                    }
+                    map_data["local_pois"].append(poi)
+    except Exception as poi_err:
+        # Bubble up exception for custom queries, only use fallback for default Boston Common demo (avoids silent fails!)
+        if "boston" in location.lower():
+            logger.warning(f"Server Overpass POI fetch encountered an error, using Boston mock overlays: {poi_err}")
+            lat, lng = map_data.get("center", [42.3601, -71.0589])
+            map_data["local_pois"] = [
+                {"lat": lat + 0.0025, "lng": lng + 0.003, "name": "The Daily Grind Cafe", "type": "cafe", "cuisine": "Coffee"},
+                {"lat": lat - 0.003, "lng": lng - 0.0025, "name": "Green Garden Restaurant", "type": "restaurant", "cuisine": "Italian"},
+                {"lat": lat + 0.004, "lng": lng - 0.0015, "name": "Beacon Boutique", "type": "shop", "cuisine": ""}
+            ]
+        else:
+            logger.error(f"Overpass POI request explicitly failed for custom query '{location}': {poi_err}")
+            raise poi_err
+            
+    return map_data
+
+def get_universal_dashboard_data():
+    """Returns elaborate Pfizer-style metrics data for the universal_dashboard template."""
+    return {
+        "title": "Seed Analytics Dashboard",
+        "subtitle": "Executive Resource Projections, KPI counter targets & Live Simulations",
+        "theme": "dark",
+        "kpis": [
+            {
+                "title": "Showcase Requests",
+                "value": "1,482 instances",
+                "sub": "+14.2% vs last session",
+                "status": "success"
+            },
+            {
+                "title": "Response Latency",
+                "value": "38 ms",
+                "sub": "99.8th percentile",
+                "status": "success"
+            },
+            {
+                "title": "Service Availability",
+                "value": "99.98%",
+                "sub": "Secure VPC Sandboxed",
+                "status": "success"
+            }
+        ],
+        "grid": [
+            {
+                "type": "chart",
+                "title": "Monthly System Resource Allocation Limits",
+                "fullWidth": True,
+                "data": {
+                    "type": "bar",
+                    "labels": ["Tier 1 Exact", "Tier 2 Jaccard", "Tier 3 LLM Fallback", "Tier 4 UI Card", "Tier 5 Audio WAV"],
+                    "label": "Compute Units Allocated (Standard vs Custom)",
+                    "data": [85, 65, 115, 90, 140]
+                }
+            },
+            {
+                "type": "simulator",
+                "title": "Capacity Simulation Engine",
+                "fullWidth": True,
+                "data": {
+                    "controls": [
+                        {"label": "User Traffic Load (x100)", "min": 5, "max": 100, "value": 45, "step": 5},
+                        {"label": "System Resource Limit (GB)", "min": 16, "max": 128, "value": 64, "step": 16}
+                    ],
+                    "chartConfig": {
+                        "type": "bar",
+                        "data": {
+                            "labels": ["Risk Index", "Attainment Target"],
+                            "datasets": [{
+                                "label": "Simulation Index Value",
+                                "data": [30, 85],
+                                "backgroundColor": ["rgba(239, 68, 68, 0.85)", "rgba(37, 99, 235, 0.85)"]
+                            }]
+                        }
+                    },
+                    "onUpdateBody": "const load = params[0]; const limit = params[1]; const risk = Math.min(100, Math.max(10, parseInt((load / limit) * 100))); const target = Math.max(15, 100 - parseInt(risk * 0.4)); chart.data.datasets[0].data = [risk, target];"
+                }
+            },
+            {
+                "type": "table",
+                "title": "Dynamic Showcase Transaction Logs",
+                "fullWidth": True,
+                "data": {
+                    "headers": ["Transaction ID", "Component Type", "State Scope", "Status"],
+                    "rows": [
+                        ["TX-9842", "Tabs Showcase Panel", "Session Sandbox", "Synchronized"],
+                        ["TX-9843", "Leaflet Map Overlay", "Dynamic Street Route", "Completed"],
+                        ["TX-9844", "TTS Audio WAV Player", "WAV Transcoded 45s", "Ready"],
+                        ["TX-9845", "D3 Network Graph", "Interactive Drag/Zoom", "Rendered"]
+                    ]
+                }
+            }
+        ]
+    }
+
+def get_d3_network_data():
+    """Returns elaborate org relationship tree network graph data for the dashboard template."""
+    return {
+        "title": "Seed Topology Network Graph",
+        "subtitle": "D3 Directed Graph representing Boston nodes connections and peer dependencies",
+        "theme": "dark",
+        "kpis": [
+            {
+                "title": "Total Network Nodes",
+                "value": "5 Anchors",
+                "sub": "Active Hubs",
+                "status": "success"
+            },
+            {
+                "title": "Total Topology Edges",
+                "value": "5 Connections",
+                "sub": "Optimum Directions",
+                "status": "success"
+            }
+        ],
+        "grid": [
+            {
+                "type": "d3-network",
+                "title": "Enterprise Connections Hierarchy Map",
+                "data": {
+                    "nodes": [
+                        {"id": "Downtown Node A", "label": "Downtown Node A", "radius": 15, "color": "#ef4444", "level": 1, "detail_info": "Downtown Boston HUB Core"},
+                        {"id": "Back Bay Node B", "label": "Back Bay Node B", "radius": 12, "color": "#f97316", "level": 2, "detail_info": "Back Bay Regional Branch"},
+                        {"id": "North End Node C", "label": "North End Node C", "radius": 12, "color": "#facc15", "level": 2, "detail_info": "North End Logistics Relay"},
+                        {"id": "MIT Node D", "label": "MIT Campus Node D", "radius": 10, "color": "#38bdf8", "level": 3, "detail_info": "MIT Advanced Research Lab"},
+                        {"id": "Harvard Node E", "label": "Harvard Node E", "radius": 10, "color": "#38bdf8", "level": 3, "detail_info": "Harvard Analytics Center"}
+                    ],
+                    "edges": [
+                        {"source": "Downtown Node A", "target": "Back Bay Node B", "value": "Core Connect"},
+                        {"source": "Downtown Node A", "target": "North End Node C", "value": "Relay Link"},
+                        {"source": "Back Bay Node B", "target": "MIT Node D", "value": "Research Pipeline"},
+                        {"source": "North End Node C", "target": "Harvard Node E", "value": "Analytics Link"},
+                        {"source": "MIT Node D", "target": "Harvard Node E", "value": "University Bridge"}
+                    ]
+                }
+            },
+            {
+                "type": "table",
+                "title": "Topology Nodes Metadata Breakdown",
+                "data": {
+                    "headers": ["Node ID", "Classification", "Color Tag", "Visual Ring Type"],
+                    "rows": [
+                        ["Downtown Node A", "Downtown HUB Core", "Red", "Severity Pulsing High"],
+                        ["Back Bay Node B", "Back Bay Regional Branch", "Orange", "Severity Pulsing Medium"],
+                        ["North End Node C", "North End Logistics Relay", "Yellow", "Severity Pulsing Low"],
+                        ["MIT Campus Node D", "MIT Advanced Research Lab", "Cyan Blue", "Anchor Connect"],
+                        ["Harvard Node E", "Harvard Analytics Center", "Cyan Blue", "Anchor Connect"]
+                    ]
+                }
+            }
+        ]
+    }
+
+

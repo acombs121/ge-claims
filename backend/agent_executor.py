@@ -115,11 +115,15 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
       with open(template_path, 'r') as f:
         html_template = f.read()
       
+      # Dynamic Serve-time Google Maps API Key Injection
+      maps_key = os.environ.get("GOOGLE_MAPS_API_KEY") or ""
+      html_template = html_template.replace("YOUR_GOOGLE_MAPS_API_KEY_HERE", maps_key)
+      
       injected_script = f"<script>window.INJECTED_DATA = {json.dumps(data)};</script>"
       html_injected = html_template.replace('</head>', f'{injected_script}\n</head>')
       
-      # Dynamically size the viewport frame height based on standalone status
-      frame_height = 600
+      # Dynamically size the viewport frame height based on standalone status and template
+      frame_height = 450 if template_name == "base_map" else 600
       is_standalone = not data.get('kpis') and not data.get('title') and not data.get('subtitle')
       if is_standalone:
           grid_items = data.get('grid', [])
@@ -221,16 +225,22 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                       if isinstance(opts, dict) and "explicitList" in opts: opts = opts["explicitList"]
                       opt_nodes = []
                       if isinstance(opts, list):
-                          for opt in opts:
+                          for idx, opt in enumerate(opts):
                               opt_str = opt.get("literalString", str(opt)) if isinstance(opt, dict) else str(opt)
-                              opt_nodes.append({"label": {"literalString": opt_str}})
+                              opt_nodes.append({
+                                  "label": {"literalString": opt_str},
+                                  "value": opt.get("value", f"opt_{idx}") if isinstance(opt, dict) else f"opt_{idx}"
+                              })
                       obj["MultipleChoice"] = {
                           "options": opt_nodes,
-                          "selections": []
+                          "selections": {"path": "/dropdown_state"}
                       }
+                      # Prevent collision of choices and checkboxes at the same level
+                      for k in ["CheckBox", "checkbox", "Checkboxes", "checkboxes"]:
+                          obj.pop(k, None)
 
                   # Normalize Checkbox/Checkboxes lists to a Column of native CheckBox elements
-                  if any(k in obj for k in ["CheckBox", "checkbox", "Checkboxes", "checkboxes"]):
+                  elif any(k in obj for k in ["CheckBox", "checkbox", "Checkboxes", "checkboxes"]):
                       chk = obj.pop("CheckBox", None) or obj.pop("checkbox", None) or obj.pop("Checkboxes", None) or obj.pop("checkboxes", None)
                       labels = []
                       if isinstance(chk, dict):
@@ -251,7 +261,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                                   "component": {
                                       "CheckBox": {
                                           "label": {"literalString": lbl_str},
-                                          "checked": False
+                                          "value": {"literalBoolean": False}
                                       }
                                   }
                               })
@@ -414,7 +424,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
       else:
         return [], False
 
-  async def _handle_intercepted_action(self, query: str) -> list:
+  async def _handle_intercepted_action(self, query: str, session_id: str = None) -> list:
       """Intercepts specific user actions and handles them deterministically."""
       steps = self._manifest.get("steps", [])
       import re
@@ -425,7 +435,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
               clean_t = trigger.lower().replace('?', '').replace('.', '').replace('!', '').strip()
               
               match = clean_t in clean_q
-              if not match:
+              if not match and step.get("fuzzy_matching", True):
                   stop_words = {'how', 'many', 'have', 'the', 'for', 'let', 'look', 'show', 'give', 'and', 'with'}
                   t_words = set([w.rstrip('s') for w in re.findall(r'\w+', clean_t) if len(w) > 2 and w not in stop_words])
                   q_words = set([w.rstrip('s') for w in re.findall(r'\w+', clean_q) if len(w) > 2 and w not in stop_words])
@@ -448,10 +458,17 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                   if tool_func:
                       try:
                           import inspect
+                          tool_args = step.get("action_tool_args", {}).copy()
+                          if action_tool == "get_map_visualization":
+                              loc_match = re.search(r'(?:of|in|for)\s+([^?.,!]+)', query, re.IGNORECASE)
+                              if loc_match:
+                                  extracted_loc = loc_match.group(1).strip()
+                                  tool_args["location"] = extracted_loc
+                                  logger.info(f"[DEBUG] Extracted dynamic maps location: '{extracted_loc}'")
                           if inspect.iscoroutinefunction(tool_func):
-                              result = await tool_func()
+                              result = await tool_func(**tool_args)
                           else:
-                              result = tool_func()
+                              result = tool_func(**tool_args)
                               
                           output_mode = step.get("output_mode")
                           processed_data = None
@@ -469,11 +486,20 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                                   ])
                               ]
                           elif output_mode == "native":
-                              mapper_name = step.get("native_mapper")
-                              import component_mappers
-                              mapper_func = getattr(component_mappers, mapper_name, None)
-                              if mapper_func:
-                                  processed_data = mapper_func(result)
+                               mapper_name = step.get("native_mapper")
+                               import component_mappers
+                               mapper_func = getattr(component_mappers, mapper_name, None)
+                               if mapper_func:
+                                   if action_tool == "get_standard_widgets_overview" and session_id:
+                                       state_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'public', 'data')
+                                       state_path = os.path.join(state_dir, f"{session_id}_widget_state.json")
+                                       if os.path.exists(state_path):
+                                           try:
+                                               with open(state_path, 'r') as f:
+                                                   result["state"] = json.load(f)
+                                           except:
+                                               pass
+                                   processed_data = mapper_func(result)
                                   
                           if processed_data:
                               parts = []
@@ -524,8 +550,9 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                         
                         try:
                             from google.cloud import storage
-                            storage_client = storage.Client(project="sandbox-426014")
-                            bucket_name = "sandbox-426014-a2ui-media-cache"
+                            storage_client = storage.Client()
+                            project_id = storage_client.project or os.environ.get("GOOGLE_CLOUD_PROJECT", "YOUR_GCP_PROJECT_ID")
+                            bucket_name = os.environ.get("A2UI_MEDIA_BUCKET") or f"{project_id}-a2ui-media-cache"
                             bucket = storage_client.bucket(bucket_name)
                             
                             blob = bucket.blob("a2ui_latest_vision_bytes.bin")
@@ -552,7 +579,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
     self._executed_tool_data = None
     
     # Intercept Action Check
-    intercepted_parts = await self._handle_intercepted_action(query)
+    intercepted_parts = await self._handle_intercepted_action(query, session_id)
     if intercepted_parts:
         await updater.start_work()
         await updater.add_artifact(intercepted_parts, name="response")
@@ -578,6 +605,61 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                 clean_context = {k: (v[0] if isinstance(v, list) and v else v) for k, v in ui_context.items()}
                 current_query_text = f"User action triggered: name={action_name}, context={json.dumps(clean_context)}"
                 logger.info(f"A2UI-INJECT | Updated query text with UI event context: {current_query_text}")
+                
+    # Action Event Intercept for Stateful Widget Saving & Rehydration
+    action_name = ""
+    clean_context = {}
+    if context.message and hasattr(context.message, 'parts'):
+        for part in context.message.parts:
+            if hasattr(part, 'root') and hasattr(part.root, 'data') and isinstance(part.root.data, dict) and "userAction" in part.root.data:
+                action_data = part.root.data["userAction"]
+                ui_context = action_data.get("context", {})
+                action_name = action_data.get("name", "")
+                clean_context = {k: (v[0] if isinstance(v, list) and v else v) for k, v in ui_context.items()}
+                
+    if action_name in ["save_widget_selection", "load_widget_selection"]:
+        await updater.start_work()
+        state_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'public', 'data')
+        os.makedirs(state_dir, exist_ok=True)
+        state_path = os.path.join(state_dir, f"{session_id}_widget_state.json")
+        
+        import component_mappers as cm
+        import component_library as cl
+        from hr_data import get_standard_widgets_overview
+        
+        parts = []
+        
+        if action_name == "save_widget_selection":
+            with open(state_path, 'w') as f:
+                json.dump(clean_context, f, indent=2)
+            
+            msg = "Active input parameters and picklist selections saved successfully to local session file."
+            native_res = cm.build_confirmation_card({"message": msg})
+            parts.append(types.Part(root=types.TextPart(text=msg)))
+            for m in native_res:
+                parts.append(types.Part(root=types.DataPart(data=m, metadata={"mimeType": "application/json+a2ui"})))
+                
+        elif action_name == "load_widget_selection":
+            loaded_state = {}
+            if os.path.exists(state_path):
+                with open(state_path, 'r') as f:
+                    loaded_state = json.load(f)
+                msg = "Previous execution state successfully retrieved and rehydrated!"
+            else:
+                msg = "No previous state found for this session. Loaded default widgets."
+                
+            widget_data = get_standard_widgets_overview()
+            widget_data["state"] = loaded_state
+            
+            native_res = cm.build_showcase_widgets_card(widget_data)
+            parts.append(types.Part(root=types.TextPart(text=msg)))
+            for m in native_res:
+                parts.append(types.Part(root=types.DataPart(data=m, metadata={"mimeType": "application/json+a2ui"})))
+                
+        await updater.add_artifact(parts, name="response")
+        await updater.complete()
+        return
+
     max_retries = 3
     attempt = 0
 
@@ -717,6 +799,14 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
         return
 
       parts, success = self._process_response_content(final_response_content, self._cached_ui_payload)
+      
+      logger.info(f"[EXECUTION COMPLETE] success={success} parts_count={len(parts)} final_text='{final_response_content[:100]}...' cached_ui={self._cached_ui_payload is not None}")
+      for i, part in enumerate(parts):
+          part_kind = getattr(part, 'kind', None) or (part.root.kind if hasattr(part, 'root') else 'unknown')
+          logger.info(f"  Part {i}: kind={part_kind}")
+          if part_kind == "data" or (hasattr(part, 'root') and hasattr(part.root, 'data')):
+              data_val = part.root.data if hasattr(part, 'root') else getattr(part, 'data', None)
+              logger.info(f"    Data payload snippet: {str(data_val)[:500]}")
       
       if success:
         await updater.add_artifact(parts, name="response")

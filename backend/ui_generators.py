@@ -8,26 +8,6 @@ def render_ui_button(label: str = "Submit", action_name: str = "button_clicked",
         cl.surface_update(surface_id="canvas-surface", components=btn_nodes)
     ]
 
-def render_ui_dropdown(options: list[str] = ["Option A", "Option B"], title: str = "Select an Option") -> list:
-    """Generates and renders a selectable dropdown/picklist menu component in the UI."""
-    components = []
-    components.append(cl.card(element_id="dropdown-card", child="dropdown-col"))
-    
-    child_ids = ["title-lbl"]
-    components.append(cl.text(element_id="title-lbl", content=title, usage_hint="h4"))
-    
-    for idx, opt in enumerate(options):
-        b_id = f"opt_btn_{idx}"
-        child_ids.append(b_id)
-        btn_nodes = cl.button(element_id=b_id, label=str(opt), action_name="select_option", context=[{"option": str(opt)}])
-        components.extend(btn_nodes)
-        
-    components.append(cl.column(element_id="dropdown-col", children=child_ids))
-    return [
-        cl.begin_rendering(surface_id="canvas-surface", root="dropdown-card"),
-        cl.surface_update(surface_id="canvas-surface", components=components)
-    ]
-
 def render_ui_table(title: str = "Data Overview", headers: list[str] = ["Item", "Status"], rows: list[list[str]] = [["System", "Active"]]) -> list:
     """Generates and renders a structured data table in the UI."""
     components = []
@@ -93,43 +73,99 @@ def render_ui_tabs(tab_titles: list[str] = ["Tab 1", "Tab 2"], tab_contents: lis
     ]
 
 def render_ui_modal(button_label: str = "Open Details", modal_title: str = "Context Details", modal_content: str = "Full expanded breakdown of information.") -> list:
-    """Generates and renders an interactive button that opens an overlay Modal dialog in the UI."""
+    """Generates and renders an interactive overlay Modal dialog in the UI without triggering server actions."""
     components = []
     
-    btn_nodes = cl.button(element_id="modal-entry-btn", label=button_label, action_name="open_modal", context=[])
-    components.extend(btn_nodes)
+    # Clickable Card serving as EntryPoint to Modal overlay (prevents redundant server actions)
+    components.append(cl.card(element_id="modal-entry-card", child="modal-entry-txt"))
+    components.append(cl.text(element_id="modal-entry-txt", content=button_label, usage_hint="body"))
     
     components.append(cl.column(element_id="modal-content-col", children=["m-title", "m-body"]))
     components.append(cl.text(element_id="m-title", content=modal_title, usage_hint="h3"))
     components.append(cl.text(element_id="m-body", content=modal_content, usage_hint="body"))
     
-    components.append(cl.modal(element_id="modal-root", entry_id="modal-entry-btn", content_id="modal-content-col"))
+    components.append(cl.modal(element_id="modal-root", entry_id="modal-entry-card", content_id="modal-content-col"))
     return [
         cl.begin_rendering(surface_id="canvas-surface", root="modal-root"),
         cl.surface_update(surface_id="canvas-surface", components=components)
     ]
 
 def render_ui_dropdown(title: str = "Select an Option", options: list[str] = ["Option A", "Option B"]) -> list:
-    """Generates and renders a dropdown selection menu in the UI using MultipleChoice."""
-    components = [
-        cl.multiple_choice(element_id="dropdown-comp", options=options)
-    ]
+    """Generates and renders a dropdown selection menu in the UI wrapped in a Card and Column, complete with a state-bound Submit Button."""
+    components = []
+    components.append(cl.card(element_id="dropdown-card", child="dropdown-col"))
+    components.append(cl.column(element_id="dropdown-col", children=["dropdown-title", "dropdown-comp", "dropdown-submit-btn"]))
+    components.append(cl.text(element_id="dropdown-title", content=title, usage_hint="h4"))
+    components.append(cl.multiple_choice(element_id="dropdown-comp", options=options))
+    
+    # Add State-Bound Submit Button conforming to A2UI schema
+    components.append({
+        "id": "dropdown-submit-btn",
+        "component": {
+            "Button": {
+                "child": "dropdown-submit-txt",
+                "primary": True,
+                "action": {
+                    "name": "select_option",
+                    "context": [
+                        {
+                            "key": "selection",
+                            "value": {"path": "/dropdown-comp_state"}
+                        }
+                    ]
+                }
+            }
+        }
+    })
+    components.append(cl.text(element_id="dropdown-submit-txt", content="Confirm Selection", usage_hint="body"))
+    
     return [
-        cl.begin_rendering(surface_id="canvas-surface", root="dropdown-comp"),
+        cl.begin_rendering(surface_id="canvas-surface", root="dropdown-card"),
         cl.surface_update(surface_id="canvas-surface", components=components)
     ]
 
-def render_ui_checkbox(labels: list[str] = ["Option X", "Option Y"]) -> list:
-    """Generates and renders a list of CheckBox components inside a vertical Column in the UI."""
+def render_ui_checkbox(labels: list[str] = ["Option X", "Option Y"], title: str = "Select Options") -> list:
+    """Generates and renders a list of CheckBox components wrapped inside a Card complete with a Submit Button."""
     components = []
-    child_ids = []
+    components.append(cl.card(element_id="checkbox-card", child="checkbox-col"))
+    
+    child_ids = ["checkbox-title"]
+    components.append(cl.text(element_id="checkbox-title", content=title, usage_hint="h4"))
+    
     for idx, label_str in enumerate(labels):
         c_id = f"chk_{idx}"
         child_ids.append(c_id)
         components.append(cl.checkbox(element_id=c_id, label=label_str, checked=False))
         
+    # Add Submit Button
+    btn_id = "checkbox-submit-btn"
+    txt_id = "checkbox-submit-txt"
+    child_ids.append(btn_id)
+    
+    context_list = []
+    for idx, label_str in enumerate(labels):
+        context_list.append({
+            "key": f"chk_{idx}_selected",
+            "value": {"literalBoolean": False}
+        })
+        
+    components.append({
+        "id": btn_id,
+        "component": {
+            "Button": {
+                "child": txt_id,
+                "primary": True,
+                "action": {
+                    "name": "submit_selections",
+                    "context": context_list
+                }
+            }
+        }
+    })
+    components.append(cl.text(element_id=txt_id, content="Confirm Selections", usage_hint="body"))
+    
     components.append(cl.column(element_id="checkbox-col", children=child_ids))
     return [
-        cl.begin_rendering(surface_id="canvas-surface", root="checkbox-col"),
+        cl.begin_rendering(surface_id="canvas-surface", root="checkbox-card"),
         cl.surface_update(surface_id="canvas-surface", components=components)
     ]

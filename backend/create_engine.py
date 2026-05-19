@@ -2,9 +2,9 @@ import vertexai
 from vertexai.preview import reasoning_engines
 import os
 
-PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT", "sandbox-426014")
+PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT", "YOUR_GCP_PROJECT_ID")
 LOCATION = "us-central1"
-STAGING_BUCKET = "gs://sandbox-426014-a2ui-media-cache"
+STAGING_BUCKET = os.environ.get("A2UI_STAGING_BUCKET") or f"gs://{PROJECT_ID}-a2ui-media-cache"
 
 vertexai.init(project=PROJECT_ID, location=LOCATION, staging_bucket=STAGING_BUCKET)
 

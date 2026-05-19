@@ -1,25 +1,35 @@
 #!/bin/bash
 # deploy.sh
-# Deploys the Generic ADK Orchestrator Agent to Cloud Run
+# Deploys the Rebranded A2UI Seed Agent to Cloud Run with IAM Service Account Identity
 
-SERVICE_NAME="aon-hr-agent"
+SERVICE_NAME="a2ui-seed-agent"
 REGION="us-central1"
 
 echo "Deploying service '$SERVICE_NAME' to Cloud Run..."
 
-# Extract Google Maps API Key from Bayer environment if available
+# Extract Google Maps API Key from local environment if available
 if [ -z "$GOOGLE_MAPS_API_KEY" ]; then
-    if [ -f "../../aon-hr-agent/backend/.env" ]; then
-        export $(grep -v '^#' ../../aon-hr-agent/backend/.env | grep GOOGLE_MAPS_API_KEY | xargs)
+    if [ -f "./.env" ]; then
+        export $(grep -v '^#' ./.env | grep GOOGLE_MAPS_API_KEY | xargs)
     fi
 fi
 
-# Deploy to Cloud Run from source code
+# Resolve active GCP Project ID dynamically for service account mapping
+PROJECT_ID=$(gcloud config get-value project 2>/dev/null)
+if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "(unset)" ] || [ "$PROJECT_ID" = "YOUR_GCP_PROJECT_ID" ]; then
+    echo "❌ ERROR: No active Google Cloud Project is configured in your gcloud CLI."
+    echo "   Please set your active project before deploying using:"
+    echo "   gcloud config set project YOUR_GCP_PROJECT_ID"
+    exit 1
+fi
+
+# Deploy to Cloud Run from source code attaching a dedicated least-privilege identity
 gcloud run deploy $SERVICE_NAME \
     --source . \
     --platform managed \
     --region $REGION \
     --allow-unauthenticated \
+    --service-account="a2ui-seed-run-identity@$PROJECT_ID.iam.gserviceaccount.com" \
     --set-env-vars="GEMINI_MODEL=gemini-3.1-flash-lite-preview,GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY" \
     --quiet
 

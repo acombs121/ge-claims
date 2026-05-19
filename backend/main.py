@@ -9,6 +9,21 @@ from google.genai import types, Client
 from google.adk.models.google_llm import Gemini
 import google.auth
 
+# ------------------------------------------------------------------------------
+# PROACTIVE ENV LOAD: Load local .env file variables automatically
+# ------------------------------------------------------------------------------
+def load_env():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    env_path = os.path.join(base_dir, '.env')
+    if os.path.exists(env_path):
+        with open(env_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    k, v = line.split('=', 1)
+                    os.environ[k.strip()] = v.strip().strip('"').strip("'")
+load_env()
+
 # Standard A2A Servicing Engine
 from a2a.server.apps.jsonrpc.starlette_app import A2AStarletteApplication
 from a2a.server.request_handlers import DefaultRequestHandler
@@ -74,11 +89,32 @@ agent_card = a2a_types.AgentCard(
     capabilities=a2a_types.AgentCapabilities(streaming=True),
     skills=[
         a2a_types.AgentSkill(
-            id="hr_self_service",
-            name="Aon HR Assistant",
-            description="Helps with performance reviews, benefits information, and vacation requests via Workday integration.",
-            tags=["aon", "hr", "workday", "performance_review"],
-            examples=["Let's look at my HR portal.", "Help me prepare for my performance review.", "How many vacation days do I have left?"],
+            id="standard_widgets_showcase",
+            name="Standard Components Showcase",
+            description="Demonstrates dynamic form elements, sliders, modals, checkboxes, and tabs.",
+            tags=["widgets", "inputs", "tabs"],
+            examples=["let's see standard widgets overview"],
+        ),
+        a2a_types.AgentSkill(
+            id="interactive_maps_overlay",
+            name="Geographic Maps and Overlays",
+            description="Visualizes routing paths, pulsing priority anchors, and density layers dynamically.",
+            tags=["maps", "leaflet", "overlays"],
+            examples=["show map visualization"],
+        ),
+        a2a_types.AgentSkill(
+            id="universal_dashboard_metrics",
+            name="Universal Metrics Dashboard",
+            description="Displays KPI boxes, responsive D3 org network graphs, and interactive simulator variables.",
+            tags=["dashboard", "d3-network", "charts"],
+            examples=["show universal dashboard"],
+        ),
+        a2a_types.AgentSkill(
+            id="seekable_audio_tts",
+            name="Transcoded Speech WAV Summarizer",
+            description="Provides customizable podcast voice briefings read dynamically.",
+            tags=["audio", "tts", "podcast"],
+            examples=["give me an audio summary"],
         )
     ]
 )
@@ -96,11 +132,81 @@ app = A2AStarletteApplication(
     http_handler=request_handler,
 ).build()
 
-from starlette.responses import Response, FileResponse
+from starlette.responses import Response
 from starlette.routing import Route
+import re
+
+def get_range_response(file_path: str, media_type: str, request_headers: dict) -> Response:
+    file_size = os.path.getsize(file_path)
+    range_header = request_headers.get("range")
+    
+    cors_headers = {
+        "Access-Control-Allow-Origin": request_headers.get("origin", "*"),
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Range, Content-Type",
+        "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges",
+        "Accept-Ranges": "bytes",
+    }
+
+    if not range_header:
+        with open(file_path, "rb") as f:
+            content = f.read()
+        return Response(
+            content=content,
+            status_code=200,
+            media_type=media_type,
+            headers=cors_headers
+        )
+
+    match = re.match(r"bytes=(\d+)-(\d*)", range_header)
+    if not match:
+        return Response(
+            content="Invalid range header",
+            status_code=400,
+            headers=cors_headers
+        )
+
+    start = int(match.group(1))
+    end_str = match.group(2)
+    end = int(end_str) if end_str else file_size - 1
+
+    if start >= file_size:
+        cors_headers["Content-Range"] = f"bytes */{file_size}"
+        return Response(
+            status_code=416,
+            headers=cors_headers
+        )
+
+    end = min(end, file_size - 1)
+    chunk_size = end - start + 1
+
+    with open(file_path, "rb") as f:
+        f.seek(start)
+        data = f.read(chunk_size)
+
+    cors_headers["Content-Range"] = f"bytes {start}-{end}/{file_size}"
+    cors_headers["Content-Length"] = str(chunk_size)
+
+    return Response(
+        content=data,
+        status_code=206,
+        media_type=media_type,
+        headers=cors_headers
+    )
 
 async def serve_media(request):
-    media_id = request.path_params.get("media_id")
+    if request.method == "OPTIONS":
+        return Response(
+            status_code=200,
+            headers={
+                "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+                "Access-Control-Allow-Methods": "GET, OPTIONS",
+                "Access-Control-Allow-Headers": "Range, Content-Type",
+                "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges",
+            }
+        )
+
+    media_id = os.path.basename(request.path_params.get("media_id"))
     local_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'media_cache')
     os.makedirs(local_dir, exist_ok=True)
     local_path = os.path.join(local_dir, media_id)
@@ -117,30 +223,38 @@ async def serve_media(request):
     else:
         media_type = "image/jpeg"
 
-    # 1. Check if file is in local media cache
     if os.path.exists(local_path):
         try:
-            return FileResponse(local_path, media_type=media_type)
+            return get_range_response(local_path, media_type, request.headers)
         except Exception as e:
-            logger.error(f"Error serving local file via FileResponse: {e}")
+            logger.error(f"Error serving local file: {e}")
 
-    # 2. Fallback: Download from GCS cache locally to enable HTTP 206 Range request streaming
     try:
         from google.cloud import storage
-        client = storage.Client(project="sandbox-426014")
-        bucket = client.bucket("sandbox-426014-a2ui-media-cache")
+        client = storage.Client()
+        project_id = client.project or os.environ.get("GOOGLE_CLOUD_PROJECT", "YOUR_GCP_PROJECT_ID")
+        bucket_name = os.environ.get("A2UI_MEDIA_BUCKET") or f"{project_id}-a2ui-media-cache"
+        bucket = client.bucket(bucket_name)
         blob = bucket.blob(f"generated_ads/{media_id}")
         
         if not blob.exists():
-             return Response(content="Media not found or expired from persistent GCS cache.", status_code=404)
+             cors_headers = {
+                 "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+                 "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges",
+             }
+             return Response(content="Media not found or expired from persistent GCS cache.", status_code=404, headers=cors_headers)
              
         blob.download_to_filename(local_path)
-        return FileResponse(local_path, media_type=media_type)
+        return get_range_response(local_path, media_type, request.headers)
     except Exception as e:
         logger.error(f"Error serving media dynamically from GCS: {e}")
-        return Response(content=f"Internal Server Error: {str(e)}", status_code=500)
+        cors_headers = {
+             "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+             "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges",
+        }
+        return Response(content=f"Internal Server Error: {str(e)}", status_code=500, headers=cors_headers)
 
-app.routes.append(Route("/media/{media_id}", serve_media, methods=["GET"]))
+app.routes.append(Route("/media/{media_id}", serve_media, methods=["GET", "OPTIONS"]))
 
 from starlette.responses import HTMLResponse
 from fastapi import Request
@@ -190,7 +304,7 @@ async def handle_erp_submit(request: Request):
 app.routes.append(Route("/submit_erp", handle_erp_submit, methods=["POST"]))
 
 async def serve_logo(request):
-    filename = request.path_params.get("filename")
+    filename = os.path.basename(request.path_params.get("filename"))
     
     if not os.environ.get("K_SERVICE"):
         local_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'logos')
@@ -202,8 +316,10 @@ async def serve_logo(request):
             
     try:
         from google.cloud import storage
-        client = storage.Client(project="sandbox-426014")
-        bucket = client.bucket("sandbox-426014-a2ui-media-cache")
+        client = storage.Client()
+        project_id = client.project or os.environ.get("GOOGLE_CLOUD_PROJECT", "YOUR_GCP_PROJECT_ID")
+        bucket_name = os.environ.get("A2UI_MEDIA_BUCKET") or f"{project_id}-a2ui-media-cache"
+        bucket = client.bucket(bucket_name)
         blob = bucket.blob(f"logos/{filename}")
         
         from starlette.responses import Response
