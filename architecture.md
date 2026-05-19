@@ -97,3 +97,37 @@ To prevent raw API key invalidation or leakage:
     *   `roles/aiplatform.user` (Vertex AI User): Grants access to run generative Vertex models.
     *   `roles/storage.objectAdmin` (Storage Object Admin): Limits GCS read/write permissions to caching dynamic visual assets in `YOUR_GCP_PROJECT_ID-a2ui-media-cache`.
 *   **Local Development ADC:** Authorized securely via `gcloud auth application-default login`, eliminating local JSON secret keys distribution.
+
+---
+
+## 6. Multi-Step Cloning Protocol
+
+When cloning this repository for a new customer, industry, or use case (e.g., clinical trials, retail inventory, wealth management), avoid making haphazard single-turn changes. Follow this rigorous 5-step cloning protocol:
+
+### Step 1: Narrative & Schema Design (Alignment Phase)
+1. Define the target customer, industry persona, and key pain points.
+2. Map out exactly 4-5 steps for the core demo flow in a spreadsheet or document (`User Query` -> `Action Tool` -> `Target Output Mode`: `native`, `iframe`, `url`, `text`).
+3. Define the exact JSON data schemas required for each tool's business response.
+4. *CRITICAL: Stop and verify alignment with stakeholders before writing any code.*
+
+### Step 2: Synthetic Data & Core Domain Tools
+1. Create detailed, high-fidelity mock data JSON files inside `backend/data/` (e.g., `wealth_portfolio.json`) matching the agreed schema.
+2. Create a dedicated domain data Python module (e.g., `wealth_data.py`) containing pure data tools that read/write to those JSON files. Ensure all tools return clean Python dictionaries (zero HTML/UI formatting).
+3. Register these new tool functions in `agent.py` and update `SYSTEM_INSTRUCTION` to reflect the new domain persona.
+
+### Step 3: Component Library Mappers
+1. In `component_mappers.py`, create specialized Python mapper functions (e.g., `build_portfolio_card(data)`) that translate pure domain dictionaries into Native A2UI component lists using generator functions from `component_library.py`.
+2. For custom dashboard layouts or interactive simulators, create or adapt HTML templates inside `backend/templates/` (e.g., `wealth_dashboard.html`).
+
+### Step 4: Declarative Orchestration (`demo_manifest.json`)
+1. Completely update `demo_manifest.json` with the new demo steps.
+2. For each step, define clean, natural sample trigger sentences in `trigger_queries` (e.g., `"how many vacation days do I have left?"`). Avoid adding single-word keyword crutches (like `"vacation"`).
+3. *Note: The stateless Jaccard stem engine in `agent_executor.py` will automatically evaluate stem overlap across all follow-up conversational variations, ensuring topic switching without requiring stateful tracking.*
+
+### Step 5: Meta-Files, Branding & Verification
+1. Stage new logos or visual assets in `backend/data/logos/` and cache them in GCS.
+2. Update `agent_card.json` with the new agent name, description, and sample queries.
+3. Update `deploy.sh` with the new Cloud Run service name.
+4. Update `README.md` with the new demo script.
+5. Execute `python3 -m unittest discover -s tests` to verify local stability before running `./deploy.sh`.
+
