@@ -4,7 +4,7 @@ This repository serves as a completely customer-agnostic, highly aesthetic, prod
 
 It demonstrates the full spectrum of A2UI 0.8 native standard components and custom high-fidelity dynamic maps and metrics dashboards, deployed securely onto Google Cloud Run utilizing Application Default Credentials (ADC) under a dedicated service account identity.
 
-For a comprehensive architectural breakdown, please refer to [architecture.md](file:///Users/rtejada/Workspace/a2ui-seed-agent/architecture.md) and [plan.md](file:///Users/rtejada/Workspace/a2ui-seed-agent/plan.md).
+For a comprehensive architectural breakdown, please refer to [architecture.md](file:///Users/rtejada/Workspace/a2ui-seed-agent/architecture.md).
 
 ---
 
