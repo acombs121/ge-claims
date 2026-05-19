@@ -4,7 +4,7 @@ This repository serves as a completely customer-agnostic, highly aesthetic, prod
 
 It demonstrates the full spectrum of A2UI 0.8 native standard components and custom high-fidelity dynamic maps and metrics dashboards, deployed securely onto Google Cloud Run utilizing Application Default Credentials (ADC) under a dedicated service account identity.
 
-For a comprehensive architectural breakdown, please refer to [architecture.md](file:///Users/rtejada/Workspace/a2ui-seed-agent/architecture.md).
+For an architectural breakdown including how the agent reasons, please refer to [architecture.md](file:///Users/rtejada/Workspace/a2ui-seed-agent/architecture.md).
 
 ---
 
@@ -30,6 +30,43 @@ For a comprehensive architectural breakdown, please refer to [architecture.md](f
 ## Google Cloud IAM Service Account & Security Strategy
 
 This agent uses Google Cloud Application Default Credentials (ADC). Secure your terminal locally using `gcloud auth application-default login`, and the deployed Cloud Run instance automatically inherits Vertex AI and GCS storage access via the attached least-privileged service account `a2ui-seed-run-identity@YOUR_GCP_PROJECT_ID.iam.gserviceaccount.com` without managing any physical JSON key files.
+
+---
+
+## Prerequisites
+
+To deploy or run this seed agent template in a new Google Cloud environment, verify the following prerequisites are fully configured:
+
+### 1. Enable Google Cloud APIs
+Run the following command inside your gcloud authenticated terminal to enable all required Vertex AI, storage, and maps orchestration APIs:
+```bash
+gcloud services enable \
+    aiplatform.googleapis.com \
+    secretmanager.googleapis.com \
+    storage.googleapis.com \
+    run.googleapis.com \
+    cloudbuild.googleapis.com \
+    directions.googleapis.com \
+    places.googleapis.com
+```
+
+### 2. Provision Cloud Storage Bucket
+* Create a Google Cloud Storage bucket named **`{YOUR_GCP_PROJECT_ID}-a2ui-media-cache`** in the same region as your deployment (e.g., `us-central1`).
+* This bucket is dynamically resolved at runtime to securely cache seekable WAV summaries and visual preview graphics.
+
+### 3. Provision IAM Service Account Identity
+Create a dedicated least-privileged service account named **`a2ui-seed-run-identity`** in your active project:
+* **Service Account Email:** `a2ui-seed-run-identity@{YOUR_GCP_PROJECT_ID}.iam.gserviceaccount.com`
+* **Assign Roles:**
+  1. `roles/aiplatform.user` (Vertex AI User)
+  2. `roles/storage.objectAdmin` (Storage Object Admin) on the media cache bucket.
+
+### 4. Google Maps API Credentials
+* Acquire a **Google Maps API Key** with both **Directions API** and **Places API** enabled.
+* For local development runs, save this key inside a local `.env` file inside the `backend/` directory:
+  ```env
+  GOOGLE_MAPS_API_KEY=your_maps_api_key_here
+  ```
 
 ---
 
