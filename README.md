@@ -98,3 +98,25 @@ To securely deploy this capability showcase template to Google Cloud Run, follow
    ./deploy.sh
    ```
 The deploy script dynamically extracts your active GCP project ID from your gcloud configurations, packages the agent, attaches the dedicated least-privileged IAM Service Account (`a2ui-seed-run-identity@YOUR_GCP_PROJECT_ID.iam.gserviceaccount.com`), configures the serverless environment, and updates the Cloud Run AGENT_URL parameter dynamically for seamless A2A header routing.
+
+---
+
+## How to Clone & Customize for New Demos
+
+This repository is built as a highly modular, reusable seed template. To clone and customize this agent for a new industry, customer, or use-case specific visual showcase:
+
+### 1. Clone the Repository
+Clone the template codebase into your new custom repository name:
+```bash
+git clone https://github.com/rtejada-g/a2ui-seed-agent.git your-custom-agent
+cd your-custom-agent
+```
+
+### 2. Customize the Agent Card & Identity
+* **Agent Card Registration:** Open [agent_card.json](file:///Users/rtejada/Workspace/a2ui-seed-agent/agent_card.json) and update the `"name"`, `"description"`, and `"skills"` lists to match your custom persona.
+* **LLM System Instructions:** Open [agent.py](file:///Users/rtejada/Workspace/a2ui-seed-agent/backend/agent.py) and modify the `SYSTEM_INSTRUCTION` string to adapt the agent's conversational guidelines and role constraints.
+
+### 3. Customize the Visual Showcase & Scripts
+* **Manifest Script Triggers:** Open [demo_manifest.json](file:///Users/rtejada/Workspace/a2ui-seed-agent/backend/demo_manifest.json) and change the step triggers under `trigger_queries` to align with your exact presentation script.
+* **Widgets & Map Data:** Modify the mock coordinates, heatmaps, sliders, and modal options inside [showcase_widgets.json](file:///Users/rtejada/Workspace/a2ui-seed-agent/backend/data/showcase_widgets.json) and [map_showcase.json](file:///Users/rtejada/Workspace/a2ui-seed-agent/backend/data/map_showcase.json).
+* **Vibrant HTML/CSS Styles:** Adjust color tokens and layout specifications inside the custom viewport templates ([universal_dashboard.html](file:///Users/rtejada/Workspace/a2ui-seed-agent/backend/templates/universal_dashboard.html) and [base_map.html](file:///Users/rtejada/Workspace/a2ui-seed-agent/backend/templates/base_map.html)) to fit your custom brand design.
