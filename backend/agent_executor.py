@@ -434,14 +434,18 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
               clean_q = query.lower().replace('?', '').replace('.', '').replace('!', '').strip()
               clean_t = trigger.lower().replace('?', '').replace('.', '').replace('!', '').strip()
               
-              match = clean_t in clean_q
-              if not match and step.get("fuzzy_matching", True):
-                  stop_words = {'how', 'many', 'have', 'the', 'for', 'let', 'look', 'show', 'give', 'and', 'with'}
-                  t_words = set([w.rstrip('s') for w in re.findall(r'\w+', clean_t) if len(w) > 2 and w not in stop_words])
-                  q_words = set([w.rstrip('s') for w in re.findall(r'\w+', clean_q) if len(w) > 2 and w not in stop_words])
-                  req_min = len(t_words) if len(t_words) <= 2 else len(t_words) - 1
-                  if t_words and len(q_words.intersection(t_words)) >= req_min and len(q_words.intersection(t_words)) >= 1:
-                      match = True
+              is_fuzzy = step.get("fuzzy_matching", True)
+              if is_fuzzy:
+                  match = clean_t in clean_q
+                  if not match:
+                      stop_words = {'how', 'many', 'have', 'the', 'for', 'let', 'look', 'show', 'give', 'and', 'with'}
+                      t_words = set([w.rstrip('s') for w in re.findall(r'\w+', clean_t) if len(w) > 2 and w not in stop_words])
+                      q_words = set([w.rstrip('s') for w in re.findall(r'\w+', clean_q) if len(w) > 2 and w not in stop_words])
+                      req_min = len(t_words) if len(t_words) <= 2 else len(t_words) - 1
+                      if t_words and len(q_words.intersection(t_words)) >= req_min and len(q_words.intersection(t_words)) >= 1:
+                          match = True
+              else:
+                  match = (clean_q == clean_t)
                       
               if match:
                   logger.info(f"[DEBUG] Intercepted query '{query}' matching trigger '{trigger}'")
@@ -465,12 +469,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                                   extracted_loc = loc_match.group(1).strip()
                                   tool_args["location"] = extracted_loc
                                   logger.info(f"[DEBUG] Extracted dynamic maps location: '{extracted_loc}'")
-                          elif action_tool == "generate_audio_summary":
-                              topic_match = re.search(r'(?:of|about|for)\s+([^?.,!]+)', query, re.IGNORECASE)
-                              if topic_match:
-                                  extracted_topic = topic_match.group(1).strip()
-                                  tool_args["context_summary"] = extracted_topic
-                                  logger.info(f"[DEBUG] Extracted dynamic audio summary topic: '{extracted_topic}'")
+
                           if inspect.iscoroutinefunction(tool_func):
                               result = await tool_func(**tool_args)
                           else:
