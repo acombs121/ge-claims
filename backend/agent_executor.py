@@ -465,6 +465,12 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                                   extracted_loc = loc_match.group(1).strip()
                                   tool_args["location"] = extracted_loc
                                   logger.info(f"[DEBUG] Extracted dynamic maps location: '{extracted_loc}'")
+                          elif action_tool == "generate_audio_summary":
+                              topic_match = re.search(r'(?:of|about|for)\s+([^?.,!]+)', query, re.IGNORECASE)
+                              if topic_match:
+                                  extracted_topic = topic_match.group(1).strip()
+                                  tool_args["context_summary"] = extracted_topic
+                                  logger.info(f"[DEBUG] Extracted dynamic audio summary topic: '{extracted_topic}'")
                           if inspect.iscoroutinefunction(tool_func):
                               result = await tool_func(**tool_args)
                           else:
