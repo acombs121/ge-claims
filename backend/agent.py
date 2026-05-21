@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from google.adk.agents import Agent
 from prompt_builder import get_ui_instruction
-from hr_data import get_hr_portal_overview, get_standard_widgets_overview, get_map_visualization, get_universal_dashboard_data, get_d3_network_data, reset_state
+from hr_data import get_hr_portal_overview, get_standard_widgets_overview, get_map_visualization, get_universal_dashboard_data, get_d3_network_data
 from media_tools import generate_synthetic_image, generate_synthetic_audio
 from ui_generators import render_ui_button, render_ui_dropdown, render_ui_table, render_ui_card, render_ui_tabs, render_ui_modal, render_ui_checkbox
 
@@ -92,7 +92,6 @@ root_agent = Agent(
         render_ui_card,
         render_ui_tabs,
         render_ui_modal,
-        render_ui_checkbox,
-        reset_state
+        render_ui_checkbox
     ]
 )

@@ -5,7 +5,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-STATE_FILE = os.path.join(DATA_DIR, 'hr_state.json')
 
 def _read_json(filename):
     path = os.path.join(DATA_DIR, filename)
@@ -13,21 +12,6 @@ def _read_json(filename):
         return {}
     with open(path, 'r') as f:
         return json.load(f)
-
-def _read_state():
-    if not os.path.exists(STATE_FILE):
-        return {}
-    with open(STATE_FILE, 'r') as f:
-        return json.load(f)
-
-def _write_state(state):
-    with open(STATE_FILE, 'w') as f:
-        json.dump(state, f, indent=2)
-
-def reset_state():
-    """Resets the session state."""
-    _write_state({})
-    return {"status": "State reset successfully"}
 
 def get_hr_portal_overview():
     """Returns a high-fidelity Workday-like portal overview without Skills."""
@@ -215,11 +199,7 @@ def register_benefit(benefit_name: str):
     print(f"\n[AGENT_PLATFORM] Agent 'a2ui_seed_agent' performed action 'register_benefit' for benefit '{benefit_name}' for user '{user_name}' ({user_id}) at {timestamp}\n")
     logger.info(f"[AGENT_PLATFORM] Agent 'a2ui_seed_agent' performed action 'register_benefit' for benefit '{benefit_name}' for user '{user_name}' ({user_id}) at {timestamp}")
     
-    state = _read_state()
-    pending = state.get('pending_registrations', [])
-    pending.append(benefit_name)
-    state['pending_registrations'] = pending
-    _write_state(state)
+
     
     return {
         "success": True,
