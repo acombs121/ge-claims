@@ -55,3 +55,6 @@ Ensure the deployed Cloud Run instance is publicly accessible to allow inbound A
    * `"show map visualization"` (pronounced clouds/wind, dynamic OSM traffic, and glowing Google Places POI circles)
    * `"show universal dashboard"` (KPI analytics counter cards, Allocation trend Vega-Lite graphs, and interactive risk simulator controls)
    * `"give me an audio summary"` (WAV seekable voice summaries)
+   * `"show the team backlog"` (custom Kanban issue board mapping column lists and transitions)
+   * `"show the checkout register"` (checkout/refund receipt register with stamp overlays)
+   * `"generate a walkthrough video"` (Vertex AI / Veo 2.0 generated fashion showcase simulation)

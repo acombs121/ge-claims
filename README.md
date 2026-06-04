@@ -24,6 +24,9 @@ For an architectural breakdown including how the agent reasons, please refer to 
 *   give me a simple google map
 *   show the universal dashboard
 *   load D3 network dashboard
+*   show the team backlog (Kanban issue board)
+*   show the checkout register (POS transaction tracker)
+*   generate a walkthrough video (Vertex AI Veo 2.0 animation generator)
 
 ---
 

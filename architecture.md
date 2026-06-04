@@ -66,16 +66,25 @@ Supports two distinct mapping paths resolved dynamically based on query intent:
     *   *Live OWM Clouds & Wind velocity*: Pronounced, high-contrast real-time weather clouds and wind contour overlays.
     *   *Local Restaurants & Shops POIs*: Points of Interest pulled dynamically from the OpenStreetMap **Overpass API** complete with emerald, amber, and indigo custom pin tooltips!
     *   *Stretching Radar tiles*: Capping composite zooms at `maxNativeZoom: 6` to auto-stretch imagery and permanently prevent any CDN zoom watermarks.
+    *   *Default-Off Interactive Overlays*: All dynamic overlays (weather, traffic, heatmaps, pulsing alert rings, POIs) are disabled by default on startup. Users toggle them via checkboxes in the overlay control panel.
 
 ### C. Decoupled Visual Analytics Dashboards
 Provides two completely segregated custom viewports inside the step manifest to showcase multi-template capability:
 1.  **Universal Dashboard (`universal_dashboard.html`)**: Standard analytics metrics featuring bold counter cards, simulated Risk vs. Attainment sliders, and allocation trends.
 2.  **D3 Directed Network Graph (`dashboard.html`)**: Interactive drag/zoom directed org nodes representing peer connections, severity pulsing anchors, and connection metadata tables.
 
-### D. Seekable TTS WAV Transcoding & Syn Image Caching
+### D. Interactive Kanban & POS Checkout Templates
+1.  **Aesthetic Kanban Board (`kanban_board.html`)**: A custom viewport showcasing dynamic project backlog tracking. Features columns (TODO, IN PROGRESS, DONE), story points, assignee badges, detailed task description modal popups, interactive comments additions, and status transitions syncable to the parent agent frame.
+2.  **Checkout & Refund Register (`pos_register.html`)**: Renders transaction receipt components, items cart, subtotals, loyalty tier recommendations, and dynamic complete stamp overlays ("REFUND APPROVED", "EXCHANGED") that animate upon action dispatch.
+
+### E. Seekable TTS WAV Transcoding & Syn Image Caching
 *   **WAV Transcoding**: `generate_audio_summary` queries `gemini-3.1-flash-tts-preview` for a **150-word spoken briefing** (~45s). It intercepts raw `audio/l16` PCM bytes and prepends a standard **44-byte RIFF/WAV header** in Python before saving, rendering files natively seekable.
 *   **Custom Voice Profile:** Resolves voice and speaker setups from `demo_manifest.json` (supporting `"mode": "single"` and `"mode": "podcast"` multi-speaker dialogue).
-*   **Image Generation:** Multimodal synthetic images are generated via `gemini-3.1-flash-image-preview` and cached to GCS or local directories.
+*   **Image Generation**: Multimodal synthetic images are generated via `gemini-3.1-flash-image-preview` and cached to GCS or local directories.
+
+### F. Vertex AI Veo 2.0 Video Generation (`generate_walkthrough_video`)
+*   **High-End AI Video Generation**: The `generate_walkthrough_video` tool connects to the `google-genai` SDK using `veo-2.0-generate-001` to generate a 4-second walkthrough video clip (16:9 aspect ratio) based on user prompt descriptions (optionally attaching/uploading starter images).
+*   **Production Caching**: Automatically saves and caches generated videos to GCS (when running on Cloud Run) or a local media cache directory, falling back to a pre-defined generic walkthrough asset if Vertex credentials/services are unavailable.
 
 ---
 
