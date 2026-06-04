@@ -92,6 +92,10 @@
             border-radius: 50%;
             border: 3px solid var(--accent-primary);
             animation: radarPulse 2.2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+            display: none;
+        }
+        body.show-pulse-rings .pulse-ring {
+            display: block;
         }
 
         @keyframes radarPulse {
@@ -180,9 +184,13 @@
                 <input type="checkbox" id="trafficToggle" onchange="window.toggleTraffic()"> 
                 Live Traffic Congestion (OSM)
             </label>
-            <label style="display: flex; align-items: center; gap: 10px; font-size: 0.82rem; cursor: pointer;">
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 0.82rem; cursor: pointer; margin-bottom: 6px;">
                 <input type="checkbox" id="poiToggle" onchange="window.togglePOIs()"> 
                 Local Restaurants & Shops (OSM)
+            </label>
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 0.82rem; cursor: pointer;">
+                <input type="checkbox" id="ringToggle" onchange="window.toggleRings()"> 
+                Pulsing Alert Rings
             </label>
         </div>
 
@@ -255,15 +263,12 @@
             if (config.enableHeatmap && data.heatmap_points && data.heatmap_points.length > 0) {
                 const heatPoints = data.heatmap_points.map(p => [p[0], p[1], p[2] || 0.5]);
                 heatLayer = L.heatLayer(heatPoints, { radius: 30, blur: 18, minOpacity: 0.4 });
-                document.getElementById('heatToggle').checked = true;
+                document.getElementById('heatToggle').checked = false;
                 
-                // Force size recalculation and defer canvas attachment to ensure parent DOM is visible
+                // Force size recalculation (but don't add to map)
                 setTimeout(() => {
                     if (map) {
                         map.invalidateSize();
-                        if (map.getSize().x > 0) {
-                            heatLayer.addTo(map);
-                        }
                     }
                 }, 250);
             }
@@ -334,22 +339,13 @@
             setTimeout(() => {
                 if (map) {
                     map.invalidateSize();
-                    console.log(`📊 [LEAFLET-INIT] Deferred layer load checks starting. Map size: ${map.getSize().x}px x ${map.getSize().y}px`);
+                    console.log(`📊 [LEAFLET-INIT] Map size recalculated: ${map.getSize().x}px x ${map.getSize().y}px`);
                     
-                    // Render OWM clouds by default
-                    document.getElementById('cloudsToggle').checked = true;
-                    console.log("📡 [LEAFLET-CLOUDS] Attaching clouds cover...");
-                    cloudsLayer.addTo(map);
-                    
-                    // Render OSM traffic by default
-                    document.getElementById('trafficToggle').checked = true;
-                    console.log("📡 [LEAFLET-TRAFFIC] Attaching GPS traces flow...");
-                    trafficLayer.addTo(map);
-                    
-                    // Check & Render OSM local POIs by default for instant visual aesthetic
-                    document.getElementById('poiToggle').checked = true;
-                    console.log("📡 [LEAFLET-POIS] Attaching local cafes, eateries and shops...");
-                    poiLayer.addTo(map);
+                    // Keep overlays off by default
+                    document.getElementById('cloudsToggle').checked = false;
+                    document.getElementById('trafficToggle').checked = false;
+                    document.getElementById('poiToggle').checked = false;
+                    document.getElementById('ringToggle').checked = false;
                 }
             }, 300);
 
@@ -479,6 +475,15 @@
                 poiLayer.addTo(map);
             } else if (poiLayer) {
                 map.removeLayer(poiLayer);
+            }
+        }
+
+        window.toggleRings = function() {
+            const checked = document.getElementById('ringToggle').checked;
+            if (checked) {
+                document.body.classList.add('show-pulse-rings');
+            } else {
+                document.body.classList.remove('show-pulse-rings');
             }
         }
 

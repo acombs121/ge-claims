@@ -336,3 +336,161 @@ async def generate_synthetic_audio(context_summary: str, tool_context: ToolConte
         print(f"AUDIO GEN FATAL ERROR: {traceback.format_exc()}")
         return f"Audio generation explicitly failed against Vertex endpoint: {str(e)}."
 
+def load_image_bytes(image_url_or_b64: str) -> bytes:
+    """Helper to fetch and extract raw image bytes from URL, base64, GCS path, or local path."""
+    if not image_url_or_b64:
+        return None
+    # If base64 data URI format
+    if "," in image_url_or_b64:
+        _, encoded = image_url_or_b64.split(",", 1)
+        import base64
+        try:
+            return base64.b64decode(encoded)
+        except Exception as e:
+            print(f"Failed to decode base64 URI image: {e}")
+    # If standard raw base64 string
+    if len(image_url_or_b64) > 1000 and not image_url_or_b64.startswith("http") and not image_url_or_b64.startswith("/"):
+        import base64
+        try:
+            return base64.b64decode(image_url_or_b64)
+        except Exception as e:
+            print(f"Failed to decode raw base64 image: {e}")
+    # If local path or local route media path
+    if image_url_or_b64.startswith("/") or "/media/" in image_url_or_b64:
+        path = image_url_or_b64
+        if "/media/" in image_url_or_b64:
+            media_id = image_url_or_b64.split("/media/")[-1]
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "media_cache", media_id)
+        if os.path.exists(path):
+            try:
+                with open(path, "rb") as f:
+                    return f.read()
+            except Exception as e:
+                print(f"Failed to read local image file at {path}: {e}")
+    # If http or https URL
+    if image_url_or_b64.startswith("http"):
+        import urllib.request
+        try:
+            with urllib.request.urlopen(image_url_or_b64) as response:
+                return response.read()
+        except Exception as e:
+            print(f"Failed to fetch image from URL {image_url_or_b64}: {e}")
+    # If GCS URI format
+    if image_url_or_b64.startswith("gs://"):
+        try:
+            from google.cloud import storage
+            storage_client = storage.Client()
+            bucket_part, blob_part = image_url_or_b64[5:].split("/", 1)
+            bucket = storage_client.bucket(bucket_part)
+            blob = bucket.blob(blob_part)
+            return blob.download_as_bytes()
+        except Exception as e:
+            print(f"Failed to download image from GCS URI {image_url_or_b64}: {e}")
+    return None
+
+async def generate_veo_video(image_url: str = None, prompt: str = "Premium retail fashion modeling walking preview. Subject walking gracefully forward, elegant Outfit, high quality 720p video.", tool_context = None) -> str:
+    """Generates a premium 4-second video preview via veo-2.0-generate-001 (supporting prompt customization and input image references)."""
+    agent_root = os.environ.get("AGENT_URL", "http://127.0.0.1:8080")
+    if not genai:
+        print("google-genai SDK is not installed or available. Falling back to default mock walkthrough.")
+        return f"{agent_root}/media/sample_walk.mp4"
+
+    try:
+        from google.cloud import storage
+        storage_client = storage.Client()
+        resolved_project = storage_client.project or os.environ.get("GOOGLE_CLOUD_PROJECT", "YOUR_GCP_PROJECT_ID")
+        
+        # Target us-central1 or appropriate Veo endpoint region
+        client = genai.Client(
+            vertexai=True,
+            project=resolved_project,
+            location="us-central1"
+        )
+
+        input_image = None
+        img_bytes = load_image_bytes(image_url)
+        if img_bytes:
+            mime_type = "image/png"
+            if img_bytes.startswith(b'\xff\xd8'):
+                mime_type = "image/jpeg"
+            elif img_bytes.startswith(b'\x89PNG'):
+                mime_type = "image/png"
+            elif img_bytes.startswith(b'RIFF'):
+                mime_type = "image/webp"
+            input_image = types.Image(image_bytes=img_bytes, mime_type=mime_type)
+
+        print(f"A2UI-VEO-DEBUG | Invoking Veo model=veo-2.0-generate-001 with prompt: '{prompt}'")
+        print(f"A2UI-VEO-DEBUG | Specs: duration=4, resolution=720p, aspect_ratio=16:9, has_input_image={input_image is not None}")
+        
+        kwargs = {
+            "model": "veo-2.0-generate-001",
+            "prompt": prompt,
+            "config": types.GenerateVideosConfig(
+                duration_seconds=4,
+                aspect_ratio="16:9",
+                person_generation="allow_adult"
+            )
+        }
+        if input_image:
+            kwargs["image"] = input_image
+
+        operation = client.models.generate_videos(**kwargs)
+        
+        # Polling loop
+        import time
+        while not operation.done:
+            print(f"A2UI-VEO-DEBUG | Polling Veo operation: {operation.name}...")
+            time.sleep(5)
+            operation = client.operations.get(operation=operation)
+            
+        if operation.error:
+            raise Exception(f"Veo operation failed: {operation.error}")
+            
+        print(f"A2UI-VEO-DEBUG | Operation completed successfully. done={operation.done}, error={operation.error}")
+            
+        video_bytes = None
+        response_obj = getattr(operation, 'response', None) or getattr(operation, 'result', None)
+            
+        if response_obj and hasattr(response_obj, 'generated_videos') and response_obj.generated_videos:
+            generated_video = response_obj.generated_videos[0]
+            if hasattr(generated_video, 'video') and generated_video.video:
+                video_obj = generated_video.video
+                if hasattr(video_obj, 'video_bytes') and video_obj.video_bytes:
+                    video_bytes = video_obj.video_bytes
+                elif hasattr(video_obj, 'uri') and video_obj.uri:
+                    print(f"A2UI-VEO-DEBUG | Veo returned GCS URI: '{video_obj.uri}'. Downloading bytes...")
+                    uri = video_obj.uri
+                    if uri.startswith("gs://"):
+                        bucket_part, blob_part = uri[5:].split("/", 1)
+                        storage_client = storage.Client()
+                        bucket = storage_client.bucket(bucket_part)
+                        blob = bucket.blob(blob_part)
+                        video_bytes = blob.download_as_bytes()
+                
+        if not video_bytes:
+            raise ValueError("Veo operation did not return video_bytes or uri")
+            
+        import uuid
+        media_id = str(uuid.uuid4())
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        if not os.environ.get("K_SERVICE"):
+            local_dir = os.path.join(base_dir, 'data', 'media_cache')
+            os.makedirs(local_dir, exist_ok=True)
+            with open(os.path.join(local_dir, f"{media_id}.mp4"), "wb") as f:
+                f.write(video_bytes)
+            return f"{agent_root}/media/{media_id}.mp4"
+        else:
+            client_storage = storage.Client()
+            p_id = client_storage.project or os.environ.get("GOOGLE_CLOUD_PROJECT", "YOUR_GCP_PROJECT_ID")
+            bucket_name = os.environ.get("A2UI_MEDIA_BUCKET") or f"{p_id}-a2ui-media-cache"
+            bucket = client_storage.bucket(bucket_name)
+            blob = bucket.blob(f"generated_ads/{media_id}.mp4")
+            blob.upload_from_string(video_bytes, content_type="video/mp4")
+            return f"{agent_root}/media/{media_id}.mp4"
+
+    except Exception as e:
+        print(f"A2UI-VEO-DEBUG | Error calling Veo: {e}. Falling back to default mock walkthrough.")
+        return f"{agent_root}/media/sample_walk.mp4"
+
+

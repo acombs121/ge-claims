@@ -5,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from google.adk.agents import Agent
 from prompt_builder import get_ui_instruction
 from hr_data import get_hr_portal_overview, get_standard_widgets_overview, get_map_visualization, get_universal_dashboard_data, get_d3_network_data
-from media_tools import generate_synthetic_image, generate_synthetic_audio
+from media_tools import generate_synthetic_image, generate_synthetic_audio, generate_veo_video
 from ui_generators import render_ui_button, render_ui_dropdown, render_ui_table, render_ui_card, render_ui_tabs, render_ui_modal, render_ui_checkbox
 
 
@@ -24,6 +24,20 @@ async def generate_audio_summary(context_summary: str = ""):
     return {
         "audio_url": url,
         "transcript": context_summary
+    }
+
+
+async def generate_walkthrough_video(prompt: str = "Premium retail fashion modeling walking preview. Subject walking gracefully forward, elegant Outfit, high quality 720p video.", starter_image_url: str = None):
+    """Generates a premium walkthrough video showcasing products or scenes using Gemini Veo 2.0.
+    
+    Args:
+        prompt: Custom description for the generated video action or theme (e.g. 'modeling a red jacket on the beach').
+        starter_image_url: Optional URL or base64 data string of a starter pose/lookbook image to guide video synthesis.
+    """
+    url = await generate_veo_video(image_url=starter_image_url, prompt=prompt)
+    return {
+        "video_url": url,
+        "prompt": prompt
     }
 
 
@@ -71,6 +85,11 @@ Your goal is to demonstrate the full spectrum of A2UI (Agent-to-Agent User Inter
 - **Trigger:** "give me an audio summary" or similar.
 - **Action:** You MUST ALWAYS call `generate_audio_summary(context_summary=...)` passing the user's context or requested topic as the `context_summary` parameter to get the payload.
 - **UI Output:** Output the exact JSON returned by `generate_audio_summary()` wrapped in `---a2ui_JSON---`. The backend server will format an audio player card.
+
+#### Phase 6: Veo 2.0 Walkthrough Video Generation
+- **Trigger:** "give me a short video of xyz" or similar video request (supporting input images or custom prompt descriptions).
+- **Action:** Call `generate_walkthrough_video(prompt=..., starter_image_url=...)`. You MUST pass the custom prompt description and optional image URL/base64 to the tool.
+- **UI Output:** Output the exact JSON returned by `generate_walkthrough_video()` wrapped in `---a2ui_JSON---`.
 """
 
 root_agent = Agent(
@@ -86,6 +105,7 @@ root_agent = Agent(
         get_hr_portal_overview,
         generate_hr_graphic,
         generate_audio_summary,
+        generate_walkthrough_video,
         render_ui_button,
         render_ui_dropdown,
         render_ui_table,
@@ -95,3 +115,4 @@ root_agent = Agent(
         render_ui_checkbox
     ]
 )
+

@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="connect-src 'none'">
+    <title>POS Returns & Exchange Simulator</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --border-color: #e2e8f0;
+            --accent-red: #ef4444;
+            --accent-red-hover: #dc2626;
+            --emerald: #10b981;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 16px;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+
+        /* Register Screen Header */
+        .register-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--text-primary);
+            padding-bottom: 10px;
+            margin-bottom: 16px;
+        }
+        .register-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-primary);
+        }
+        .register-status {
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: var(--text-primary);
+            color: #ffffff;
+            padding: 2px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        /* Register Main Stack */
+        .register-bill {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            margin-bottom: 16px;
+            position: relative;
+        }
+        .bill-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.82rem;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        .bill-row.header {
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 0.68rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+        .bill-row.total {
+            font-weight: 700;
+            font-size: 0.95rem;
+            border-top: 2px dashed var(--border-color);
+            padding-top: 12px;
+            margin-top: 14px;
+            margin-bottom: 0;
+        }
+        .bill-row.refund-val {
+            color: var(--accent-red);
+        }
+        
+        .receipt-meta {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Return Reason Callout */
+        .reason-callout {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary);
+            border-radius: 0 6px 6px 0;
+            padding: 10px 14px;
+            margin-bottom: 18px;
+            font-size: 0.8rem;
+        }
+        .reason-title {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0 0 4px 0;
+            text-transform: uppercase;
+            font-size: 0.68rem;
+            letter-spacing: 0.03em;
+        }
+        .reason-text {
+            margin: 0;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* AI Loyalty Upsell Curation Card */
+        .upsell-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f7f9fc 100%);
+            border: 1.5px solid rgba(59, 130, 246, 0.25);
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(15,23,42,0.03);
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .upsell-card::before {
+            content: 'LOYALTY RESCUE OFFER';
+            position: absolute;
+            top: 0; right: 0;
+            background: var(--primary);
+            color: #ffffff;
+            font-size: 0.58rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 0 0 0 8px;
+            letter-spacing: 0.05em;
+        }
+        .upsell-header {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0 0 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .upsell-header span.star { color: var(--primary); font-size: 1.1rem; }
+        .upsell-desc {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            margin: 0 0 14px 0;
+        }
+        
+        /* Mini Exchange Card */
+        .exchange-product {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            border: 1px solid #dbeafe;
+            border-radius: 6px;
+            background: #eff6ff;
+            margin-bottom: 14px;
+        }
+        .exchange-thumb {
+            width: 38px;
+            height: 38px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background-color: #ffffff;
+        }
+        .exchange-info {
+            flex: 1;
+        }
+        .exchange-title {
+            font-size: 0.78rem;
+            font-weight: 600;
+            margin: 0 0 2px 0;
+            color: var(--text-primary);
+        }
+        .exchange-price {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+        }
+        
+        /* Reward Points Bonus Callout */
+        .bonus-points-callout {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: var(--emerald);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        /* Bottom Button Stack */
+        .pos-button-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .btn-exchange-submit {
+            background: var(--primary);
+            color: #ffffff;
+            border: none;
+            padding: 14px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.15s;
+            box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+            text-align: center;
+        }
+        .btn-exchange-submit:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        
+        .btn-refund-submit {
+            background: #ffffff;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s;
+            text-align: center;
+        }
+        .btn-refund-submit:hover { background: #f1f5f9; color: var(--text-primary); }
+
+        /* Success Stamp Overlay */
+        .success-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.97);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            border-radius: 8px;
+            animation: fadeIn 0.25s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .success-stamp {
+            border: 4px double var(--emerald);
+            color: var(--emerald);
+            font-size: 1.1rem;
+            font-weight: 700;
+            padding: 8px 20px;
+            text-transform: uppercase;
+            transform: rotate(-6deg);
+            font-family: 'Outfit', sans-serif;
+            margin-bottom: 12px;
+            animation: stampGlow 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes stampGlow {
+            0% { transform: rotate(-6deg) scale(2); opacity: 0; }
+            100% { transform: rotate(-6deg) scale(1); opacity: 1; }
+        }
+        .success-text {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 0 24px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="register-header">
+        <span class="register-title">💳 QuickRegister POS Simulator</span>
+        <span class="register-status">Register 01</span>
+    </div>
+
+    <!-- POS Bill receipt simulator -->
+    <div class="register-bill">
+        <div class="receipt-meta">
+            <div>Receipt ID: <b id="receiptIdText">REC-10984</b></div>
+            <div>Associate: #8849</div>
+        </div>
+        
+        <div class="bill-row header">
+            <span>Returned Item Details</span>
+            <span>Price</span>
+        </div>
+        <div class="bill-row">
+            <span id="retItemName">Premium Leather Messenger Bag</span>
+            <span id="retItemPrice">$250.00</span>
+        </div>
+        
+        <div class="bill-row total refund-val">
+            <span>Total Refund Due:</span>
+            <span id="dueVal">$250.00</span>
+        </div>
+
+        <!-- Success Overlay Stamp Inside POS Container -->
+        <div class="success-overlay" id="successOverlay">
+            <div class="success-stamp" id="stampText">REFUND APPROVED</div>
+            <p class="success-text" id="successNotes">Ticket closed successfully. Standard credit of $250.00 issued to customer's card on file.</p>
+        </div>
+    </div>
+
+    <!-- Return Reason Callout -->
+    <div class="reason-callout">
+        <h5 class="reason-title">Return Triage Reason</h5>
+        <p class="reason-text" id="reasonText">"Beautiful craftsmanship, but sized too small for a 16-inch laptop workspace."</p>
+    </div>
+
+    <!-- AI Loyalty Upsell Curation Card -->
+    <div class="upsell-card" id="upsellCard">
+        <h4 class="upsell-header"><span class="star">★</span> Value Rescue Recommendation</h4>
+        <p class="upsell-desc">Offer a loyalty exchange! Suggest this larger Canvas Commuter Backpack. It supports up to a 17-inch laptop, awards a refund credit difference, and grants double points!</p>
+        
+        <!-- Mini exchange item representation -->
+        <div class="exchange-product">
+            <!-- Initials fallback placeholder SVG -->
+            <svg id="exch-thumb-placeholder" style="width:38px; height:38px; border-radius:4px; border:1px solid var(--border-color); background:#ffffff;" viewBox="0 0 24 24">
+                <rect width="100%" height="100%" fill="%23f1f5f9"/>
+                <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="10" fill="%23475569">EX</text>
+            </svg>
+            <img id="exch-thumb" class="exchange-thumb" src="" style="display:none;" alt="Canvas Backpack"/>
+            <div class="exchange-info">
+                <h5 id="exchItemName" class="exchange-title">Canvas Commuter Backpack</h5>
+                <span id="exchItemPrice" class="exchange-price">Price: $120.00 (Temperate & Durable)</span>
+            </div>
+        </div>
+
+        <!-- Loyalty Points Reward -->
+        <div class="bonus-points-callout">
+            <svg style="width: 16px; height: 16px; fill: currentColor; margin-right: 4px;" viewBox="0 0 24 24">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path>
+            </svg>
+            <span>+300 Loyalty Points awarded instantly!</span>
+        </div>
+    </div>
+
+    <!-- POS Button Actions (Stack) -->
+    <div class="pos-button-stack" id="buttonStack">
+        <button id="exchangeBtn" class="btn-exchange-submit" onclick="processPOSAction('exchange')">Complete Loyalty Exchange (Rescue $120.00)</button>
+        <button id="refundBtn" class="btn-refund-submit" onclick="processPOSAction('refund')">Issue Normal Refund ($250.00)</button>
+    </div>
+
+    <script>
+        let receiptId = "10984";
+        let host = "http://127.0.0.1:8080";
+
+        function init() {
+            const data = window.INJECTED_DATA || {};
+            let rawHost = window.INJECTED_HOST || "http://127.0.0.1:8080";
+            host = rawHost;
+
+            receiptId = data.receipt_id || "10984";
+            document.getElementById("receiptIdText").innerText = receiptId;
+            
+            const retItem = data.returned_item || { name: "Premium Leather Messenger Bag", price: 250.00 };
+            const exchItem = data.exchange_item || { name: "Canvas Commuter Backpack", price: 120.00, image_url: "" };
+            const triageReason = data.reason_code || "Beautiful craftsmanship, but sized too small for a 16-inch laptop workspace.";
+
+            document.getElementById("retItemName").innerText = retItem.name;
+            document.getElementById("retItemPrice").innerText = `$${retItem.price.toFixed(2)}`;
+            document.getElementById("dueVal").innerText = `$${retItem.price.toFixed(2)}`;
+            document.getElementById("reasonText").innerText = `"${triageReason}"`;
+
+            document.getElementById("exchItemName").innerText = exchItem.name;
+            document.getElementById("exchItemPrice").innerText = `Price: $${exchItem.price.toFixed(2)}`;
+            
+            if (exchItem.image_url) {
+                const exchThumbUrl = exchItem.image_url.startsWith("http") ? exchItem.image_url : (host + exchItem.image_url);
+                document.getElementById("exch-thumb").src = exchThumbUrl;
+                document.getElementById("exch-thumb").style.display = "block";
+                document.getElementById("exch-thumb-placeholder").style.display = "none";
+            }
+            
+            // Update dynamic button action labels
+            document.getElementById("exchangeBtn").innerText = `Complete Loyalty Exchange (Rescue $${exchItem.price.toFixed(2)})`;
+            document.getElementById("refundBtn").innerText = `Issue Normal Refund ($${retItem.price.toFixed(2)})`;
+
+            // Hydrate last run state
+            if (data.state && data.state.status) {
+                showCompletedPOS(data.state.status, data.state.refund_processed_usd, data.state.exchange_processed);
+            }
+        }
+
+        function processPOSAction(option) {
+            console.log(`[POS-SIMULATOR] Processing POS register action: ${option} for receipt: ${receiptId}`);
+            
+            if (window.parent) {
+                window.parent.postMessage({
+                    type: 'a2ui_action',
+                    action: 'submit_pos_exchange',
+                    data: {
+                        receipt_id: receiptId,
+                        option: option
+                    }
+                }, '*');
+            }
+        }
+
+        function showCompletedPOS(status, refundAmt, isExchange) {
+            const overlay = document.getElementById("successOverlay");
+            const stamp = document.getElementById("stampText");
+            const notes = document.getElementById("successNotes");
+            
+            if (isExchange) {
+                stamp.innerText = "EXCHANGED";
+                stamp.style.borderColor = "#10b981";
+                stamp.style.color = "#10b981";
+                notes.innerHTML = `Loyalty exchange ticket finalized. Issued card refund difference of <b>$${refundAmt.toFixed(2)}</b>.<br/>Dispatched exchange items and awarded <b>+300 Loyalty Points</b>!`;
+            } else {
+                stamp.innerText = "REFUND CLOSED";
+                stamp.style.borderColor = "#ef4444";
+                stamp.style.color = "#ef4444";
+                notes.innerHTML = `Ticket closed. Issued full refund credit of <b>$${refundAmt.toFixed(2)}</b> to original card on file.`;
+            }
+            
+            overlay.style.display = "flex";
+            document.getElementById("buttonStack").style.display = "none";
+        }
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

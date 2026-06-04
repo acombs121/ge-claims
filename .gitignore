@@ -22,3 +22,6 @@ test_erp_push.sh
 
 # Local Media Cache
 backend/data/media_cache/
+
+# Local State persistence rehydration logs
+public/data/

@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="connect-src 'none'">
+    <title>A2UI Agile Board Simulator</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap">
+    <style>
+        :root {
+            --board-bg: #f8fafc;
+            --card-bg: #ffffff;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --border-color: #e2e8f0;
+            --todo-color: #64748b;
+            --progress-color: #3b82f6;
+            --done-color: #10b981;
+            
+            --epic-eng: #dbeafe;
+            --epic-eng-text: #1e40af;
+            --epic-design: #fae8ff;
+            --epic-design-text: #86198f;
+            --epic-product: #ecfdf5;
+            --epic-product-text: #065f46;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #ffffff;
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+        .header {
+            background-color: #ffffff;
+            color: var(--text-primary);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--primary);
+        }
+        .board-badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: #f1f5f9;
+            color: var(--text-secondary);
+            padding: 4px 12px;
+            border-radius: 12px;
+        }
+        .project-banner {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            background: #fafafa;
+        }
+        .project-banner h2 {
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .project-banner p {
+            margin: 4px 0 0 0;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        .board-container {
+            display: flex;
+            gap: 20px;
+            padding: 24px;
+            background-color: var(--board-bg);
+            min-height: calc(100vh - 160px);
+            overflow-y: auto;
+        }
+        .board-column {
+            flex: 1;
+            background-color: #f1f5f9;
+            border-radius: 8px;
+            padding: 14px;
+            min-width: 260px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            height: fit-content;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            border: 1px solid #e2e8f0;
+        }
+        .column-header {
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            padding: 4px 6px;
+            border-bottom: 3px solid var(--todo-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .board-column.in-progress .column-header { border-bottom-color: var(--progress-color); }
+        .board-column.done .column-header { border-bottom-color: var(--done-color); }
+        
+        .column-count {
+            background-color: rgba(0,0,0,0.06);
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .column-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .issue-card {
+            background-color: var(--card-bg);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            padding: 14px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(15,23,42,0.02);
+            transition: transform 0.15s, box-shadow 0.15s;
+            position: relative;
+        }
+        .issue-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(15,23,42,0.06);
+        }
+        .epic-tag {
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .epic-tag.engineering { background-color: var(--epic-eng); color: var(--epic-eng-text); }
+        .epic-tag.design { background-color: var(--epic-design); color: var(--epic-design-text); }
+        .epic-tag.product { background-color: var(--epic-product); color: var(--epic-product-text); }
+
+        .issue-title {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 12px 0;
+            line-height: 1.4;
+        }
+        .issue-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .issue-key { font-weight: 600; font-family: 'Outfit', sans-serif; }
+        .sp-badge {
+            background-color: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.7rem;
+        }
+        .assignee-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid var(--border-color);
+            background-color: #f1f5f9;
+        }
+
+        /* Modal Backdrop */
+        .modal-backdrop {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15,23,42,0.4);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .jira-modal {
+            background: #ffffff;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            width: 100%;
+            max-width: 540px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            padding: 24px;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 20px; right: 20px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: none; background: none;
+        }
+        .modal-header-tag { font-size: 0.78rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; margin-bottom: 6px; font-family: 'Outfit', sans-serif; }
+        .modal-title { margin: 0 0 16px 0; font-size: 1.25rem; font-weight: 700; color: var(--text-primary); font-family: 'Outfit', sans-serif; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px; letter-spacing: 0.03em; }
+        .select-input, .text-input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: #f8fafc;
+            color: var(--text-primary);
+            font-size: 0.88rem;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        .select-input:focus, .text-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: #ffffff;
+        }
+        
+        .comments-section {
+            border-top: 1px solid var(--border-color);
+            padding-top: 16px;
+            margin-top: 20px;
+        }
+        .comment-box {
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px 12px;
+            font-size: 0.82rem;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .btn-add-comment {
+            background: var(--primary);
+            border: none;
+            color: #ffffff;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            transition: background 0.15s;
+        }
+        .btn-add-comment:hover { background: var(--primary-hover); }
+
+        .btn-sync-board {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 500;
+            background-color: var(--primary);
+            color: #ffffff;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.88rem;
+            transition: background 0.15s, transform 0.15s;
+            box-shadow: 0 4px 14px rgba(59,130,246,0.35);
+        }
+        .btn-sync-board:hover { background-color: var(--primary-hover); transform: translateY(-1px); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <span>⚙️ TaskBoard</span>
+        </div>
+        <div class="board-badge">Sprint Active</div>
+    </div>
+
+    <div class="project-banner">
+        <h2 id="banner-title">Team Backlog & Kanban Simulator</h2>
+        <p id="banner-sub">Transition tasks to 'DONE' and click Sync to commit changes back to the agent database.</p>
+    </div>
+
+    <div class="board-container">
+        <!-- TO DO COLUMN -->
+        <div class="board-column" id="col-todo">
+            <div class="column-header">To Do <span class="column-count" id="count-todo">0</span></div>
+            <div class="column-cards" id="cards-todo"></div>
+        </div>
+
+        <!-- IN PROGRESS COLUMN -->
+        <div class="board-column in-progress" id="col-progress">
+            <div class="column-header">In Progress <span class="column-count" id="count-progress">0</span></div>
+            <div class="column-cards" id="cards-progress"></div>
+        </div>
+
+        <!-- DONE COLUMN -->
+        <div class="board-column done" id="col-done">
+            <div class="column-header">Done <span class="column-count" id="count-done">0</span></div>
+            <div class="column-cards" id="cards-done"></div>
+        </div>
+    </div>
+
+    <!-- Sync Button -->
+    <button class="btn-sync-board" id="syncBtn">Synchronize Changes</button>
+
+    <!-- Details Popup Modal Backdrop -->
+    <div class="modal-backdrop" id="modalBackdrop">
+        <div class="jira-modal">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <div class="modal-header-tag" id="modalKey">TASK-01</div>
+            <h3 class="modal-title" id="modalTitle">Task Title</h3>
+            
+            <div class="form-group">
+                <label class="form-label">Board Transition Status</label>
+                <select class="select-input" id="transitionSelect" onchange="transitionActiveIssue()">
+                    <option value="todo">TO DO</option>
+                    <option value="progress">IN PROGRESS</option>
+                    <option value="done">DONE</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Story Points (SP)</label>
+                <input type="number" class="text-input" id="spInput" min="1" max="20"/>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <div style="font-size: 0.85rem; line-height: 1.5; color: var(--text-primary); background: #f8fafc; border: 1px solid var(--border-color); padding: 10px 12px; border-radius: 6px;" id="modalDesc"></div>
+            </div>
+
+            <div class="comments-section">
+                <label class="form-label">Comments</label>
+                <div id="commentsList"></div>
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                    <input type="text" class="text-input" id="commentInput" placeholder="Add a comment..." style="flex:1;"/>
+                    <button class="btn-add-comment" onclick="postComment()">Post</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let boardId = "BOARD-XYZ";
+        let issues = [
+            { id: "TASK-101", title: "Implement Async State Persistence", epic: "Engineering", epicClass: "engineering", sp: 8, desc: "Draft a unified customer-agnostic state mapping schema persisting to public/data directory.", status: "todo", comments: ["Verify GCS path extraction logic before finalizing."] },
+            { id: "TASK-102", title: "Polishing Glassmorphism Components", epic: "Design", epicClass: "design", sp: 5, desc: "Refine map overlay overlays, slide show viewcards, and pulsing radar triggers.", status: "progress", comments: [] },
+            { id: "TASK-103", title: "Ingest Seed Sample Datasets", epic: "Product", epicClass: "product", sp: 3, desc: "Generate multi-receipt register payloads and maps coordinates matrices.", status: "done", comments: ["Fully verified. Ready to ingest."] }
+        ];
+        let activeIssueId = null;
+        let host = "http://127.0.0.1:8080";
+        
+        function init() {
+            let rawHost = window.INJECTED_HOST || "http://127.0.0.1:8080";
+            host = rawHost;
+            
+            const data = window.INJECTED_DATA || {};
+            boardId = data.board_id || "BOARD-XYZ";
+            
+            const resolveEpicClass = (cat) => {
+                const c = (cat || '').toLowerCase();
+                if (c.includes("design") || c.includes("ui") || c.includes("style")) return "design";
+                if (c.includes("product") || c.includes("spec") || c.includes("content")) return "product";
+                return "engineering";
+            };
+            
+            if (data.steps && data.steps.length >= 3) {
+                // Hydrate from injected steps dynamically
+                issues[0].title = data.steps[0].title;
+                issues[0].desc = data.steps[0].description;
+                issues[0].epic = data.steps[0].category;
+                issues[0].epicClass = resolveEpicClass(data.steps[0].category);
+                
+                const valStr0 = data.steps[0].value !== undefined && data.steps[0].value !== null ? String(data.steps[0].value) : "SP: 8";
+                issues[0].sp = parseInt(valStr0.includes(":") ? valStr0.split(":")[1] : valStr0) || 8;
+  
+                issues[1].title = data.steps[1].title;
+                issues[1].desc = data.steps[1].description;
+                issues[1].epic = data.steps[1].category;
+                issues[1].epicClass = resolveEpicClass(data.steps[1].category);
+                
+                const valStr1 = data.steps[1].value !== undefined && data.steps[1].value !== null ? String(data.steps[1].value) : "SP: 5";
+                issues[1].sp = parseInt(valStr1.includes(":") ? valStr1.split(":")[1] : valStr1) || 5;
+  
+                issues[2].title = data.steps[2].title;
+                issues[2].desc = data.steps[2].description;
+                issues[2].epic = data.steps[2].category;
+                issues[2].epicClass = resolveEpicClass(data.steps[2].category);
+                
+                const valStr2 = data.steps[2].value !== undefined && data.steps[2].value !== null ? String(data.steps[2].value) : "SP: 3";
+                issues[2].sp = parseInt(valStr2.includes(":") ? valStr2.split(":")[1] : valStr2) || 3;
+            }
+  
+            // Retrieve name
+            let from_name = data.name || boardId;
+            document.getElementById("banner-title").innerText = `Task Board Backlog: ${from_name}`;
+
+            document.getElementById("syncBtn").onclick = () => {
+                console.log("[A2UI-KANBAN-SYNC] Pushing active task board update to seed...");
+                
+                const syncSteps = issues.map(iss => ({
+                    title: iss.title,
+                    category: iss.epic,
+                    value: `SP: ${iss.sp} (${iss.status.toUpperCase()})`,
+                    description: iss.desc
+                }));
+
+                if (window.parent) {
+                    window.parent.postMessage({
+                        type: 'a2ui_action',
+                        action: 'sync_backlog_to_database',
+                        data: { board_id: boardId, steps: syncSteps }
+                    }, '*');
+                }
+            };
+
+            renderBoard();
+        }
+
+        function renderBoard() {
+            document.getElementById("cards-todo").innerHTML = '';
+            document.getElementById("cards-progress").innerHTML = '';
+            document.getElementById("cards-done").innerHTML = '';
+
+            let todoCount = 0;
+            let progressCount = 0;
+            let doneCount = 0;
+
+            issues.forEach(iss => {
+                const card = document.createElement("div");
+                card.className = "issue-card";
+                card.onclick = () => openModal(iss.id);
+                
+                // Assignee generic letter initials avatar or standard styling
+                const letter = iss.epic.charAt(0);
+                const avatarSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><rect width="100%" height="100%" fill="%23e2e8f0"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23475569">${letter}</text></svg>`;
+
+                card.innerHTML = `
+                    <span class="epic-tag ${iss.epicClass}">${iss.epic}</span>
+                    <h4 class="issue-title">${iss.title}</h4>
+                    <div class="issue-footer">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span class="issue-key">${iss.id}</span>
+                            <span class="sp-badge">SP: ${iss.sp}</span>
+                        </div>
+                        <img src="${avatarSvg}" class="assignee-avatar" alt="avatar"/>
+                    </div>
+                `;
+
+                if (iss.status === "todo") {
+                    document.getElementById("cards-todo").appendChild(card);
+                    todoCount++;
+                } else if (iss.status === "progress") {
+                    document.getElementById("cards-progress").appendChild(card);
+                    progressCount++;
+                } else {
+                    document.getElementById("cards-done").appendChild(card);
+                    doneCount++;
+                }
+            });
+
+            document.getElementById("count-todo").innerText = todoCount;
+            document.getElementById("count-progress").innerText = progressCount;
+            document.getElementById("count-done").innerText = doneCount;
+        }
+
+        function openModal(issueId) {
+            activeIssueId = issueId;
+            const iss = issues.find(i => i.id === issueId);
+            if (!iss) return;
+
+            document.getElementById("modalKey").innerText = iss.id;
+            document.getElementById("modalTitle").innerText = iss.title;
+            document.getElementById("modalDesc").innerText = iss.desc;
+            document.getElementById("spInput").value = iss.sp;
+            document.getElementById("transitionSelect").value = iss.status;
+
+            renderComments(iss);
+
+            document.getElementById("modalBackdrop").style.display = "flex";
+        }
+
+        function closeModal() {
+            const iss = issues.find(i => i.id === activeIssueId);
+            if (iss) {
+                iss.sp = parseInt(document.getElementById("spInput").value) || 8;
+            }
+            document.getElementById("modalBackdrop").style.display = "none";
+            activeIssueId = null;
+            renderBoard();
+        }
+
+        function renderComments(iss) {
+            const list = document.getElementById("commentsList");
+            list.innerHTML = '';
+            iss.comments.forEach(c => {
+                const div = document.createElement("div");
+                div.className = "comment-box";
+                div.innerText = c;
+                list.appendChild(div);
+            });
+        }
+
+        function postComment() {
+            const input = document.getElementById("commentInput");
+            const text = input.value.trim();
+            if (!text) return;
+
+            const iss = issues.find(i => i.id === activeIssueId);
+            if (iss) {
+                iss.comments.push(text);
+                renderComments(iss);
+                input.value = '';
+            }
+        }
+
+        function transitionActiveIssue() {
+            const select = document.getElementById("transitionSelect");
+            const targetStatus = select.value;
+            const iss = issues.find(i => i.id === activeIssueId);
+            if (iss) {
+                iss.status = targetStatus;
+            }
+        }
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
