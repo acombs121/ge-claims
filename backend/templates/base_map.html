@@ -384,7 +384,7 @@
                         iconAnchor: [dotSize/2, dotSize/2]
                     });
                     
-                    L.marker([p[0], p[1]], { icon: customIcon })
+                    const marker = L.marker([p[0], p[1]], { icon: customIcon })
                     .bindTooltip(
                         `<div style="font-family:'Outfit', sans-serif; font-size:12px; color:#0f172a; padding:4px;"><b>${name}</b><br/><span style="color:#475569; font-size:10px;">Priority #${index + 1} | ${status}</span></div>`, 
                         { className: 'custom-tooltip', direction: 'top', offset: [0, -dotSize/2] }
@@ -392,31 +392,29 @@
 
                     // REFERENCE SPEC: How to securely bind interactive buttons inside Leaflet popups
                     // that bypass sandboxed iframe string sanitization and bridge click actions back to the parent
-                    /*
                     const popupDiv = document.createElement('div');
-                    popupDiv.style = "padding: 4px; font-family: 'Outfit', sans-serif; font-size: 12px;";
-                    popupDiv.innerHTML = `<b>${name}</b><br/><span style="font-size: 10px; color: #475569;">${status}</span>`;
+                    popupDiv.style = "padding: 4px; font-family: 'Outfit', sans-serif; font-size: 12px; min-width: 140px;";
+                    popupDiv.innerHTML = `<div style="font-weight:600; color:#0f172a;">${name}</div><div style="font-size: 10px; color: #64748b; margin-top:2px;">Status: ${status}</div>`;
                     
                     const btn = document.createElement('button');
-                    btn.textContent = 'Audit Triage Site';
-                    btn.style = "display:block; width:100%; margin-top:8px; background:#2563eb; color:#fff; border:none; padding:6px; border-radius:4px; cursor:pointer; font-weight:600;";
+                    btn.textContent = 'Focus Location';
+                    btn.style = "display:block; width:100%; margin-top:8px; background:#3b82f6; color:#fff; border:none; padding:5px 8px; border-radius:4px; cursor:pointer; font-weight:600; font-size: 11px; text-align:center; transition: background 0.2s;";
+                    btn.onmouseover = () => btn.style.background = '#2563eb';
+                    btn.onmouseout = () => btn.style.background = '#3b82f6';
                     
                     btn.addEventListener('click', () => {
-                        console.log(`[A2UI-MAP-CLICK] Action clicked for: ${name}`);
+                        console.log(`[A2UI-MAP-CLICK] Action clicked for location: ${name}`);
                         if (window.parent) {
                             window.parent.postMessage({
                                 type: 'a2ui_action',
-                                action: 'deep_dive_site',
-                                data: { site_id: name }
+                                action: 'focus_location',
+                                data: { site_id: name, status: status }
                             }, '*');
                         }
                     });
                     popupDiv.appendChild(btn);
                     
-                    L.marker([p[0], p[1]], { icon: customIcon })
-                    .bindPopup(popupDiv, { offset: [0, -dotSize/2] })
-                    .addTo(map);
-                    */
+                    marker.bindPopup(popupDiv, { offset: [0, -dotSize/2] });
                 });
             }
 

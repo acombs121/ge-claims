@@ -56,6 +56,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
     )
     self._user_id = "remote_agent"
     self._cached_ui_payload = None
+    self._active_surface_id = "canvas-surface"
     self._last_tool_name = None
     self._last_tool_data = None
     self._executed_tool_name = None
@@ -77,6 +78,54 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
             logger.info("[DEBUG] demo_manifest.json successfully loaded.")
         except Exception as e:
             logger.error("[DEBUG] Failed to parse demo_manifest.json: %s", e)
+
+  def _post_process_ui_payload(self, ui_payload: list, surface_id: str) -> list:
+      """Recursively updates all surfaceId properties and injects surfaceId context into buttons."""
+      if not ui_payload:
+          return ui_payload
+
+      def update_node(obj):
+          if isinstance(obj, dict):
+              if "surfaceId" in obj:
+                  obj["surfaceId"] = surface_id
+              
+              if "Button" in obj and isinstance(obj["Button"], dict):
+                  button_node = obj["Button"]
+                  if "action" in button_node and isinstance(button_node["action"], dict):
+                      action_node = button_node["action"]
+                      if "context" not in action_node:
+                          action_node["context"] = []
+                      
+                      has_surface_id = False
+                      for ctx in action_node["context"]:
+                          if isinstance(ctx, dict) and "surfaceId" in ctx:
+                              ctx["surfaceId"] = surface_id
+                              has_surface_id = True
+                              break
+                      if not has_surface_id:
+                          action_node["context"].append({"surfaceId": surface_id})
+                          
+              for k, v in obj.items():
+                  update_node(v)
+          elif isinstance(obj, list):
+              for item in obj:
+                  update_node(item)
+
+      import copy
+      processed = copy.deepcopy(ui_payload)
+      update_node(processed)
+      return processed
+
+  def _clean_context_value(self, v):
+      """Recursively unwraps single-element lists to scalar values to improve LLM context ingestion."""
+      if isinstance(v, list):
+          if len(v) == 1 and isinstance(v[0], (str, int, float, bool)):
+              return v[0]
+          return [self._clean_context_value(item) for item in v]
+      elif isinstance(v, dict):
+          return {k: self._clean_context_value(val) for k, val in v.items()}
+      return v
+
 
   def _wrap_tool(self, tool_func, tool_name):
       import inspect
@@ -138,11 +187,13 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
               else:
                   frame_height = 400
 
+      frame_id = f"frame-container-{template_name}-{str(uuid.uuid4())[:6]}"
+
       return [
         {
           "beginRendering": {
             "surfaceId": "canvas-surface",
-            "root": "frame-container"
+            "root": frame_id
           }
         },
         {
@@ -150,7 +201,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
             "surfaceId": "canvas-surface",
             "components": [
               {
-                "id": "frame-container",
+                "id": frame_id,
                 "component": {
                   "WebFrameSrcdoc": {
                     "htmlContent": { "literalString": html_injected },
@@ -414,6 +465,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
             processed_data = cached_ui_payload
 
         if processed_data:
+            processed_data = self._post_process_ui_payload(processed_data, self._active_surface_id)
             if isinstance(processed_data, list):
               for message in processed_data:
                 parts.append(types.Part(root=types.DataPart(data=message, metadata={"mimeType": "application/json+a2ui"})))
@@ -507,6 +559,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                                    processed_data = mapper_func(result)
                                   
                           if processed_data:
+                              processed_data = self._post_process_ui_payload(processed_data, self._active_surface_id)
                               parts = []
                               parts.append(types.Part(root=types.TextPart(text=f"Here is the {action_tool.replace('_', ' ')}.")))
                               
@@ -574,6 +627,23 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
     except Exception as e:
         logger.error(f"A2UI-MEDIA-INTERCEPT | Error mapping parts: {e}") 
         
+    # Extract surfaceId from userAction context if present, otherwise default to a new task-based ID
+    surface_id = f"surface-{task.id}"
+    if context.message and hasattr(context.message, 'parts'):
+        for part in context.message.parts:
+            if hasattr(part, 'root') and hasattr(part.root, 'data') and isinstance(part.root.data, dict) and "userAction" in part.root.data:
+                action_data = part.root.data["userAction"]
+                ui_context = action_data.get("context", {})
+                if isinstance(ui_context, dict) and "surfaceId" in ui_context:
+                    s_id = ui_context["surfaceId"]
+                    if isinstance(s_id, list) and s_id:
+                        surface_id = str(s_id[0])
+                    elif s_id:
+                        surface_id = str(s_id)
+                    logger.info(f"A2UI-INJECT | Extracted active surfaceId from userAction: {surface_id}")
+                    break
+    self._active_surface_id = surface_id
+
     updater = tasks.TaskUpdater(event_queue, task.id, task.context_id)
     session_id = task.context_id
     self._current_query = query
@@ -607,7 +677,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                 ui_context = action_data.get("context", {})
                 action_name = action_data.get("name", "")
                 # Ensure lists are unwrapped to strings for the LLM to avoid confusion
-                clean_context = {k: (v[0] if isinstance(v, list) and v else v) for k, v in ui_context.items()}
+                clean_context = {k: self._clean_context_value(v) for k, v in ui_context.items()}
                 current_query_text = f"User action triggered: name={action_name}, context={json.dumps(clean_context)}"
                 logger.info(f"A2UI-INJECT | Updated query text with UI event context: {current_query_text}")
                 
@@ -620,7 +690,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                 action_data = part.root.data["userAction"]
                 ui_context = action_data.get("context", {})
                 action_name = action_data.get("name", "")
-                clean_context = {k: (v[0] if isinstance(v, list) and v else v) for k, v in ui_context.items()}
+                clean_context = {k: self._clean_context_value(v) for k, v in ui_context.items()}
                 
     if action_name in ["save_widget_selection", "load_widget_selection"]:
         await updater.start_work()
