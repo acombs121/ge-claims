@@ -439,4 +439,50 @@ def get_d3_network_data():
         ]
     }
 
+def get_sprint_backlog(board_id: str = "BOARD-101"):
+    """Returns a customer-agnostic mock sprint backlog for the Kanban board template."""
+    return {
+        "board_id": board_id,
+        "name": "Seed Template Core Enhancements",
+        "steps": [
+            {
+                "title": "Smart Async State Persistence Provider",
+                "category": "Core Architecture",
+                "value": "SP: 8",
+                "description": "Establish a unified client-agnostic state mapping schema persisting to public/data directory with hydrated state recoveries."
+            },
+            {
+                "title": "Design System Glassmorphism Components Polishing",
+                "category": "Visual Design",
+                "value": "SP: 5",
+                "description": "Refine Leaflet map controllers, custom overlay toggles, pulsing radar rings, and card container styling for maximum premium styling."
+            },
+            {
+                "title": "Ingest Seed Showcase Mock Datasets",
+                "category": "Data & Products",
+                "value": "SP: 3",
+                "description": "Populate multi-item point-of-sale receipt database records and generic geocoding coordinates for offline sandbox runs."
+            }
+        ]
+    }
+
+def get_pos_checkout(receipt_id: str = "REC-10984"):
+    """Returns generic transaction receipt details for the POS register template."""
+    clean_id = receipt_id.upper().replace("REC-", "").strip() if receipt_id else "10984"
+    return {
+        "receipt_id": f"REC-{clean_id}",
+        "returned_item": {
+            "name": "Premium Leather Messenger Bag",
+            "price": 250.00
+        },
+        "exchange_item": {
+            "name": "Canvas Commuter Backpack",
+            "price": 120.00,
+            "image_url": ""
+        },
+        "reason_code": "Beautiful craftsmanship, but sized too small for a 16-inch laptop workspace.",
+        "loyalty_bonus_points": 300
+    }
+
+
 

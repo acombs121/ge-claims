@@ -19,7 +19,10 @@
         "show map visualization",
         "interactive leaflet map",
         "load maps demo",
-        "route optimization map"
+        "route optimization map",
+        "give me a complex map visualization",
+        "complex map visualization",
+        "show a complex map visualization"
       ],
       "fuzzy_matching": true,
       "action_tool": "get_map_visualization",
@@ -88,6 +91,32 @@
       "action_tool": "generate_hr_graphic",
       "output_mode": "native",
       "native_mapper": "build_image_card"
+    },
+    {
+      "phase": 7,
+      "trigger_queries": [
+        "show the team sprint task backlog",
+        "show the sprint backlog",
+        "sprint task backlog",
+        "generate product backlog"
+      ],
+      "fuzzy_matching": true,
+      "action_tool": "get_sprint_backlog",
+      "output_mode": "iframe",
+      "template": "kanban_board"
+    },
+    {
+      "phase": 8,
+      "trigger_queries": [
+        "show the checkout register",
+        "checkout register",
+        "lookup POS receipt",
+        "show checkout register"
+      ],
+      "fuzzy_matching": true,
+      "action_tool": "get_pos_checkout",
+      "output_mode": "iframe",
+      "template": "pos_register"
     }
   ]
 }

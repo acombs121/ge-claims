@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from google.adk.agents import Agent
 from prompt_builder import get_ui_instruction
-from hr_data import get_hr_portal_overview, get_standard_widgets_overview, get_map_visualization, get_universal_dashboard_data, get_d3_network_data
+from hr_data import get_hr_portal_overview, get_standard_widgets_overview, get_map_visualization, get_universal_dashboard_data, get_d3_network_data, get_sprint_backlog, get_pos_checkout
 from media_tools import generate_synthetic_image, generate_synthetic_audio, generate_veo_video
 from ui_generators import render_ui_button, render_ui_dropdown, render_ui_table, render_ui_card, render_ui_tabs, render_ui_modal, render_ui_checkbox
 
@@ -90,6 +90,16 @@ Your goal is to demonstrate the full spectrum of A2UI (Agent-to-Agent User Inter
 - **Trigger:** "give me a short video of xyz" or similar video request (supporting input images or custom prompt descriptions).
 - **Action:** Call `generate_walkthrough_video(prompt=..., starter_image_url=...)`. You MUST pass the custom prompt description and optional image URL/base64 to the tool.
 - **UI Output:** Output the exact JSON returned by `generate_walkthrough_video()` wrapped in `---a2ui_JSON---`.
+
+#### Phase 7: Team Sprint Backlog & Kanban Simulator
+- **Trigger:** "show the team sprint task backlog" or similar.
+- **Action:** Call `get_sprint_backlog()`.
+- **UI Output:** Output the JSON returned by the tool wrapped in `---a2ui_JSON---`.
+
+#### Phase 8: QuickRegister POS Simulator
+- **Trigger:** "show the checkout register" or similar.
+- **Action:** Call `get_pos_checkout()`.
+- **UI Output:** Output the JSON returned by the tool wrapped in `---a2ui_JSON---`.
 """
 
 root_agent = Agent(
@@ -103,6 +113,8 @@ root_agent = Agent(
         get_universal_dashboard_data,
         get_d3_network_data,
         get_hr_portal_overview,
+        get_sprint_backlog,
+        get_pos_checkout,
         generate_hr_graphic,
         generate_audio_summary,
         generate_walkthrough_video,
