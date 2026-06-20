@@ -338,11 +338,12 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                   parsed_json = {"Select": parsed_json}
               elif "label" in parsed_json or "text" in parsed_json:
                   parsed_json = {"Button": parsed_json}
-              elif any(k in str(parsed_json) for k in ["checkbox", "check box", "boxes"]):
+              root_keys_str = " ".join(parsed_json.keys()).lower()
+              if any(k in root_keys_str for k in ["checkbox", "check box", "boxes"]):
                   parsed_json = {"Checkboxes": parsed_json}
-              elif any(k in str(parsed_json) for k in ["placeholder", "textfield", "input"]):
+              elif any(k in root_keys_str for k in ["placeholder", "textfield", "input"]):
                   parsed_json = {"TextField": parsed_json}
-              elif any(k in str(parsed_json) for k in ["slider", "min", "max"]):
+              elif any(k in root_keys_str for k in ["slider", "min", "max"]):
                   parsed_json = {"Slider": parsed_json}
 
           if isinstance(parsed_json, dict) and (any(k in parsed_json for k in native_keys) or any(k in parsed_json for k in ["Select", "Checkboxes", "checkboxes"])) and not any(k in parsed_json for k in ["beginRendering", "surfaceUpdate"]):
