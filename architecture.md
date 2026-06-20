@@ -88,7 +88,27 @@ Provides two completely segregated custom viewports inside the step manifest to 
 
 ---
 
-## 4. Session Data Persistence & Rehydration
+## 4. Seed Upgrades for Enterprise Customization
+
+To ensure that developers spinning off new customer-facing agent prototypes (e.g. Telco, Pharma, Retail) can build upon a solid foundation, the seed template includes four key architectural upgrades:
+
+```mermaid
+graph TD
+    A["a2ui-seed Base Codebase"] --> B["Theme Engine (theme.css)"]
+    A --> C["Event Bridge (a2ui-bridge.js)"]
+    A --> D["Data Directory Separation (datasets/)"]
+    A --> E["Multi-Tenant Firestore Helper (firestore_client.py)"]
+```
+
+### Upgraded Core Modules:
+1. **Unified Theme Engine (`theme.css`)**: Exposes `/theme.css` styling variables dynamically. Changing `"theme"` to `"light"` or `"dark"` in the root `config.json` updates all page color variables dynamically.
+2. **Client Event Bridge (`a2ui-bridge.js`)**: Simplifies WebFrame interactions. Subscribing HTML buttons and forms to `A2UI.triggerAction(action, data)` dispatches actions directly to the parent Gemini Enterprise frame.
+3. **Data Directory Separation**: Restructures data storage under `backend/data/datasets/[customer_id]/` directory configurations, allowing developers to isolate customer files completely.
+4. **Multi-Tenant Firestore Helper**: Houses standard, secure read/write utilities in `firestore_client.py` to persist session states isolated by `session_id`.
+
+---
+
+## 5. Session Data Persistence & Rehydration
 
 To track active parameters securely during multi-agent or conversational turns:
 1.  **Session Isolation:** User selections, textfields, and checkbox states are written locally to `/public/data/[session_id]_widget_state.json`.
