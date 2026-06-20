@@ -118,7 +118,30 @@ cd your-custom-agent
 * **Agent Card Registration:** Open [agent_card.json](file:///Users/rtejada/Workspace/a2ui-seed-agent/agent_card.json) and update the `"name"`, `"description"`, and `"skills"` lists to match your custom persona.
 * **LLM System Instructions:** Open [agent.py](file:///Users/rtejada/Workspace/a2ui-seed-agent/backend/agent.py) and modify the `SYSTEM_INSTRUCTION` string to adapt the agent's conversational guidelines and role constraints.
 
-### 3. Customize the Visual Showcase & Scripts
-* **Manifest Script Triggers:** Open [demo_manifest.json](file:///Users/rtejada/Workspace/a2ui-seed-agent/backend/demo_manifest.json) and change the step triggers under `trigger_queries` to align with your exact presentation script.
-* **Widgets & Map Data:** Modify the mock coordinates, heatmaps, sliders, and modal options inside [showcase_widgets.json](file:///Users/rtejada/Workspace/a2ui-seed-agent/backend/data/showcase_widgets.json) and [map_showcase.json](file:///Users/rtejada/Workspace/a2ui-seed-agent/backend/data/map_showcase.json).
-* **Vibrant HTML/CSS Styles:** Adjust color tokens and layout specifications inside the custom viewport templates ([universal_dashboard.html](file:///Users/rtejada/Workspace/a2ui-seed-agent/backend/templates/universal_dashboard.html) and [base_map.html](file:///Users/rtejada/Workspace/a2ui-seed-agent/backend/templates/base_map.html)) to fit your custom brand design.
+### 3. Establish Contextual Datasets
+To configure your custom industry dataset, organize JSON files inside:
+`backend/data/datasets/[customer_id]/`
+* Use `load_customer_dataset(type_name)` inside `backend/config.py` to dynamically load isolated properties.
+* Populate product catalog lists (`skus.json`), customer locations (`stores.json`), or corporate directories.
+
+### 4. Leverage Unified Themes & Event Bridge
+* **Unified Theme**: Templates can import `/theme.css` to share global design variables (e.g. `--accent-primary`, `--bg-color`) supporting light/dark responsive modes. Override colors at the customer config level to auto-brand.
+* **Event Bridge**: WebFrames can import `/a2ui-bridge.js` to post events back to the parent frame seamlessly using the `A2UI` JavaScript namespace:
+  * `A2UI.triggerAction(actionName, payload)` - Triggers a backend hook or next agent turn.
+  * `A2UI.saveWidgetSelection(widgetName, context)` - Saves UI selections in state.
+  * `A2UI.onStateUpdate(callback)` - Subscribes to live state pushes.
+
+---
+
+## The Target Spinoff Playbook Map
+
+| Target Industry | Node/Store Dataset | SKU/Product Dataset | Sourcing/Vendor Registry | Core Action Link |
+| :--- | :--- | :--- | :--- | :--- |
+| **Retail (SCM/Inventory)** | Retail stores, outlets | Finished physical goods | Logistics hubs / Suppliers | Trigger Reallocation / Draft PO |
+| **Tech (Infrastructure)** | Data centers, cloud zones | TPU/GPU instances, VMs | Hardware suppliers | Provision Node / Auto-Scale |
+| **Healthcare (Operations)**| Hospital clinics, ER wards | Medical procedures, equipment | Physician / Nurse schedules | Book Appointment / Dispatch Tech |
+| **Media & Entertainment** | Streaming markets, theaters | Digital titles, ad inventory | Distribution networks / CDN | Deploy Campaign / Route Stream |
+| **Pharma Sales** | Doctor offices, hospitals | Prescription medications | Authorized manufacturers | Draft Drug Distribution PO |
+| **Telco Marketing** | Regional customer segments | Promotion/Data packages | Marketing channels (SMS/Email) | Trigger Ad Campaign |
+| **Financial Services** | Branch locations, ATMs | Credit cards/Loan products | Underwriting partners | Approve Loan Underwrite |
+| **Energy & Utilities** | Power grid substations | Repair/Component parts | Certified contractors | Schedule Dispatch Work Order |

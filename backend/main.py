@@ -337,6 +337,28 @@ async def serve_logo(request):
 
 app.routes.append(Route("/logos/{filename}", serve_logo, methods=["GET"]))
 
+async def serve_theme(request):
+    theme_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates', 'theme.css')
+    if os.path.exists(theme_path):
+        from starlette.responses import Response
+        with open(theme_path, "r") as f:
+            return Response(content=f.read(), media_type="text/css")
+    from starlette.responses import Response
+    return Response(content="Theme not found", status_code=404)
+
+app.routes.append(Route("/theme.css", serve_theme, methods=["GET"]))
+
+async def serve_bridge(request):
+    bridge_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates', 'a2ui-bridge.js')
+    if os.path.exists(bridge_path):
+        from starlette.responses import Response
+        with open(bridge_path, "r") as f:
+            return Response(content=f.read(), media_type="application/javascript")
+    from starlette.responses import Response
+    return Response(content="Bridge script not found", status_code=404)
+
+app.routes.append(Route("/a2ui-bridge.js", serve_bridge, methods=["GET"]))
+
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 8080))
