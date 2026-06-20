@@ -19,7 +19,7 @@
   },
   "ui_settings": {
     "enable_spatial_analytics": true,
-    "chart_theme": "premium_dark",
+    "theme": "light",
     "enable_streaming_healer": true
   }
 }

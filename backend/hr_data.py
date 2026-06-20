@@ -303,12 +303,16 @@ def get_map_visualization(intent: str = "interactive", route_type: str = "shorte
             
     return map_data
 
+def get_theme_default():
+    cfg = _read_json('config.json')
+    return cfg.get("ui_settings", {}).get("theme", "light")
+
 def get_universal_dashboard_data():
     """Returns elaborate Pfizer-style metrics data for the universal_dashboard template."""
     return {
         "title": "Seed Analytics Dashboard",
         "subtitle": "Executive Resource Projections, KPI counter targets & Live Simulations",
-        "theme": "dark",
+        "theme": get_theme_default(),
         "kpis": [
             {
                 "title": "Showcase Requests",
@@ -386,7 +390,7 @@ def get_d3_network_data():
     return {
         "title": "Seed Topology Network Graph",
         "subtitle": "D3 Directed Graph representing Boston nodes connections and peer dependencies",
-        "theme": "dark",
+        "theme": get_theme_default(),
         "kpis": [
             {
                 "title": "Total Network Nodes",
