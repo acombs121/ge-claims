@@ -380,7 +380,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
 
           is_valid = True
         except Exception as e:
-          error_message = f"Validation failed: {str(e)}"
+          error_message = f"Validation failed: {str(e)}. Parsed JSON: {json_string_cleaned}"
           logger.error(error_message)
 
       if is_valid:
