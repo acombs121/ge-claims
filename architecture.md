@@ -120,13 +120,18 @@ When cloning this repository for a new customer, industry, or use case (e.g., cl
 4. *CRITICAL: Stop and verify alignment with stakeholders before writing any code.*
 
 ### Step 2: Synthetic Data & Core Domain Tools
-1. Create detailed, high-fidelity mock data JSON files inside `backend/data/` (e.g., `wealth_portfolio.json`) matching the agreed schema.
-2. Create a dedicated domain data Python module (e.g., `wealth_data.py`) containing pure data tools that read/write to those JSON files. Ensure all tools return clean Python dictionaries (zero HTML/UI formatting).
-3. Register these new tool functions in `agent.py` and update `SYSTEM_INSTRUCTION` to reflect the new domain persona.
+1. Create detailed, high-fidelity mock data JSON files inside a customer-isolated directory: `backend/data/datasets/[customer_id]/` (e.g., `skus.json`, `stores.json`).
+2. Create a dedicated domain data Python module (e.g., `forecasting_data.py`). Load variables by calling `load_customer_dataset(type_name)` from `backend.config` to dynamically resolve isolated properties. Ensure all tools return clean Python dictionaries (zero HTML/UI formatting).
+3. Do not swallow errors or fallback silently inside catch blocks. Let GCP permission and database errors bubble up so they fail loudly in testing.
+4. Register these new tool functions in `agent.py` and update `SYSTEM_INSTRUCTION` to reflect the new domain persona.
 
 ### Step 3: Component Library Mappers
 1. In `component_mappers.py`, create specialized Python mapper functions (e.g., `build_portfolio_card(data)`) that translate pure domain dictionaries into Native A2UI component lists using generator functions from `component_library.py`.
-2. For custom dashboard layouts or interactive simulators, create or adapt HTML templates inside `backend/templates/` (e.g., `wealth_dashboard.html`).
+2. For custom dashboard layouts or interactive simulators, create HTML templates inside `backend/templates/`.
+3. Reference `/theme.css` in your template `<link>` tags to share global design variables and support automatic light/dark branding configurations.
+4. Reference `/a2ui-bridge.js` in `<script>` tags to use the `A2UI` window namespace for sending actions back to the parent frame:
+   * `A2UI.triggerAction(actionName, payload)` - To dispatch actions or trigger the next agent turn.
+   * `A2UI.saveWidgetSelection(widgetName, context)` - To sync widget states.
 
 ### Step 4: Declarative Orchestration (`demo_manifest.json`)
 1. Completely update `demo_manifest.json` with the new demo steps.
