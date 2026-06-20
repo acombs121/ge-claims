@@ -6,6 +6,8 @@
     <meta http-equiv="Content-Security-Policy" content="connect-src 'none'">
     <title>A2UI Agile Board Simulator</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="/theme.css">
+    <script src="/a2ui-bridge.js"></script>
     <style>
         :root {
             --board-bg: #f8fafc;
@@ -425,13 +427,7 @@
                     description: iss.desc
                 }));
 
-                if (window.parent) {
-                    window.parent.postMessage({
-                        type: 'a2ui_action',
-                        action: 'sync_backlog_to_database',
-                        data: { board_id: boardId, steps: syncSteps }
-                    }, '*');
-                }
+                A2UI.triggerAction('sync_backlog_to_database', { board_id: boardId, steps: syncSteps });
             };
 
             renderBoard();

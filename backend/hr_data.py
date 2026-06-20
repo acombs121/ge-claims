@@ -6,12 +6,15 @@ logger = logging.getLogger(__name__)
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
+from config import load_customer_dataset
+
 def _read_json(filename):
-    path = os.path.join(DATA_DIR, filename)
-    if not os.path.exists(path):
+    dataset_type = filename.replace('.json', '')
+    try:
+        return load_customer_dataset(dataset_type)
+    except Exception as e:
+        logger.error(f"Error loading dataset {dataset_type}: {e}")
         return {}
-    with open(path, 'r') as f:
-        return json.load(f)
 
 def get_hr_portal_overview():
     """Returns a high-fidelity Workday-like portal overview without Skills."""

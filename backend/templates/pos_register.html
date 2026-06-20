@@ -6,6 +6,8 @@
     <meta http-equiv="Content-Security-Policy" content="connect-src 'none'">
     <title>POS Returns & Exchange Simulator</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="/theme.css">
+    <script src="/a2ui-bridge.js"></script>
     <style>
         :root {
             --primary: #3b82f6;
@@ -413,16 +415,7 @@
         function processPOSAction(option) {
             console.log(`[POS-SIMULATOR] Processing POS register action: ${option} for receipt: ${receiptId}`);
             
-            if (window.parent) {
-                window.parent.postMessage({
-                    type: 'a2ui_action',
-                    action: 'submit_pos_exchange',
-                    data: {
-                        receipt_id: receiptId,
-                        option: option
-                    }
-                }, '*');
-            }
+            A2UI.triggerAction('submit_pos_exchange', { receipt_id: receiptId, option: option });
         }
 
         function showCompletedPOS(status, refundAmt, isExchange) {
