@@ -73,7 +73,7 @@
         "podcast voice briefing",
         "audio presentation summary"
       ],
-      "fuzzy_matching": true,
+      "fuzzy_matching": false,
       "action_tool": "generate_audio_summary",
       "action_tool_args": {
         "length": "short"
@@ -92,7 +92,7 @@
         "give me a long audio summary",
         "long audio summary"
       ],
-      "fuzzy_matching": true,
+      "fuzzy_matching": false,
       "action_tool": "generate_audio_summary",
       "action_tool_args": {
         "length": "long"
