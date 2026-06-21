@@ -163,19 +163,32 @@ def build_showcase_widgets_card(data):
     components.append(cl.tabs(
         element_id="showcase-tabs",
         titles=["Form Inputs", "Picklists & Check", "Modal Popup"],
-        children=["tab-inputs-col", "tab-picks-col", "tab-overlay-col"]
+        children=["tab-inputs-card", "tab-picks-card", "tab-overlay-card"]
     ))
+    
+    # Card wrappers for tabs contents
+    components.append(cl.card(element_id="tab-inputs-card", child="tab-inputs-col"))
+    components.append(cl.card(element_id="tab-picks-card", child="tab-picks-col"))
+    components.append(cl.card(element_id="tab-overlay-card", child="tab-overlay-col"))
     
     # Tab 1: Form Inputs (TextFields + Sliders)
     components.append(cl.column(element_id="tab-inputs-col", children=[
         "tf-ref-title", "tf_name", "tf-key-title", "tf_key", "slider-title", "slider_1"
     ]))
     components.append(cl.text(element_id="tf-ref-title", content="Reference Tag", usage_hint="caption"))
-    components.append(cl.text_field(element_id="tf_name", label="Enter reference name...", value=active_ref))
+    tf_name = cl.text_field(element_id="tf_name", label="Enter reference name...", value=active_ref)
+    tf_name["component"]["TextField"]["text"] = {"path": "/tf_name_state", "literalString": active_ref}
+    components.append(tf_name)
+
     components.append(cl.text(element_id="tf-key-title", content="Security ID", usage_hint="caption"))
-    components.append(cl.text_field(element_id="tf_key", label="Enter identifier...", value=active_key))
+    tf_key = cl.text_field(element_id="tf_key", label="Enter identifier...", value=active_key)
+    tf_key["component"]["TextField"]["text"] = {"path": "/tf_key_state", "literalString": active_key}
+    components.append(tf_key)
+
     components.append(cl.text(element_id="slider-title", content="Capacity Scale Limit", usage_hint="caption"))
-    components.append(cl.slider(element_id="slider_1", min_val=slider_min, max_val=slider_max, value=active_slider))
+    slider_1 = cl.slider(element_id="slider_1", min_val=slider_min, max_val=slider_max, value=active_slider)
+    slider_1["component"]["Slider"]["value"] = {"path": "/slider_1_state", "literalNumber": active_slider}
+    components.append(slider_1)
     
     # Tab 2: Choices & Picklists
     components.append(cl.column(element_id="tab-picks-col", children=[
@@ -230,7 +243,19 @@ def build_showcase_widgets_card(data):
     components.append(cl.row(element_id="action-row", children=["btn_save_state", "btn_load_state"], distribution="spaceBetween"))
     
     # Save state action
-    save_btn = cl.button(element_id="btn_save_state", label="Save Active Selection", action_name="save_widget_selection", context=[], primary=True)
+    save_btn = cl.button(
+        element_id="btn_save_state", 
+        label="Save Active Selection", 
+        action_name="save_widget_selection", 
+        context=[
+            {"key": "dropdown_state", "value": {"path": "/dropdown_state"}},
+            {"key": "tf_name_state", "value": {"path": "/tf_name_state"}},
+            {"key": "tf_key_state", "value": {"path": "/tf_key_state"}},
+            {"key": "slider_1_state", "value": {"path": "/slider_1_state"}},
+            {"key": "chk_options_state", "value": {"path": "/chk_options_state"}}
+        ], 
+        primary=True
+    )
     components.extend(save_btn)
     
     # Load state action

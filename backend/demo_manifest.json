@@ -68,11 +68,35 @@
       "phase": 4,
       "trigger_queries": [
         "give me an audio summary",
+        "give me a short audio summary",
+        "short audio summary",
         "podcast voice briefing",
         "audio presentation summary"
       ],
-      "fuzzy_matching": false,
+      "fuzzy_matching": true,
       "action_tool": "generate_audio_summary",
+      "action_tool_args": {
+        "length": "short"
+      },
+      "output_mode": "native",
+      "native_mapper": "build_audio_card",
+      "audio_config": {
+        "mode": "podcast",
+        "voices": ["Aoede", "Charon"],
+        "speakers": ["Host", "Expert"]
+      }
+    },
+    {
+      "phase": 4.5,
+      "trigger_queries": [
+        "give me a long audio summary",
+        "long audio summary"
+      ],
+      "fuzzy_matching": true,
+      "action_tool": "generate_audio_summary",
+      "action_tool_args": {
+        "length": "long"
+      },
       "output_mode": "native",
       "native_mapper": "build_audio_card",
       "audio_config": {

@@ -18,9 +18,14 @@ async def generate_hr_graphic(prompt: str = "Generate a clean, modern, dark-mode
     }
 
 
-async def generate_audio_summary(context_summary: str = ""):
-    """Generates an audio podcast summary discussing the specified context, query, or topic of interest."""
-    url = await generate_synthetic_audio(context_summary or "Welcome to the A2UI Seed Agent executive audio capability briefing.")
+async def generate_audio_summary(context_summary: str = "", length: str = "short"):
+    """Generates an audio podcast summary discussing the specified context, query, or topic of interest.
+    
+    Args:
+        context_summary: Text or topic to summarize.
+        length: Duration limit for the summary ('short' = ~50 words, 'long' = ~150 words). Defaults to 'short'.
+    """
+    url = await generate_synthetic_audio(context_summary or "Welcome to the A2UI Seed Agent executive audio capability briefing.", length=length)
     return {
         "audio_url": url,
         "transcript": context_summary

@@ -180,7 +180,7 @@ async def generate_synthetic_image(prompt: str, tool_context: ToolContext = None
     return "Error: Generated response did not contain inline image bytes."
 
 
-async def generate_synthetic_audio(context_summary: str, tool_context: ToolContext = None) -> str:
+async def generate_synthetic_audio(context_summary: str, length: str = "short", tool_context: ToolContext = None) -> str:
     """Generates a synthetic audio podcast summary based on the current context using gemini-3.1-flash-tts-preview. Returns the public URL to the generated audio file."""
     if not genai:
         return "Error: google-genai SDK is not installed or available."
@@ -217,10 +217,11 @@ async def generate_synthetic_audio(context_summary: str, tool_context: ToolConte
         except Exception as e:
             print(f"A2UI-TTS-CONFIG | Failed loading custom audio config, using defaults: {e}")
             
+        word_count = "50-word" if length == "short" else "150-word"
         if audio_mode == "podcast" and len(voices) >= 2 and len(speakers) >= 2:
-            transcript_prompt = f"Generate a professional 150-word audio summary discussing this context: {context_summary}. The speakers are {speakers[0]} (an expert) and {speakers[1]} (a specialist). Keep it friendly, highly contextual, and informative as a podcast conversation."
+            transcript_prompt = f"Generate a professional {word_count} audio summary discussing this context: {context_summary}. The speakers are {speakers[0]} (an expert) and {speakers[1]} (a specialist). Keep it friendly, highly contextual, and informative as a podcast conversation."
         else:
-            transcript_prompt = f"Generate a professional 150-word audio briefing discussing this context: {context_summary}. Keep it friendly, clear, highly contextual, and informative as a single speaker presentation."
+            transcript_prompt = f"Generate a professional {word_count} audio briefing discussing this context: {context_summary}. Keep it friendly, clear, highly contextual, and informative as a single speaker presentation."
         
         transcript_res = client.models.generate_content(
             model="gemini-3-flash-preview",
