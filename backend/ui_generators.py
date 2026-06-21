@@ -96,7 +96,10 @@ def render_ui_dropdown(title: str = "Select an Option", options: list[str] = ["O
     components.append(cl.card(element_id="dropdown-card", child="dropdown-col"))
     components.append(cl.column(element_id="dropdown-col", children=["dropdown-title", "dropdown-comp", "dropdown-submit-btn"]))
     components.append(cl.text(element_id="dropdown-title", content=title, usage_hint="h4"))
-    components.append(cl.multiple_choice(element_id="dropdown-comp", options=options))
+    dropdown_comp = cl.multiple_choice(element_id="dropdown-comp", options=options)
+    dropdown_comp["component"]["MultipleChoice"]["selections"] = {"path": "/dropdown-comp_state"}
+    dropdown_comp["component"]["MultipleChoice"]["maxAllowedSelections"] = 1
+    components.append(dropdown_comp)
     
     # Add State-Bound Submit Button conforming to A2UI schema
     components.append({
@@ -135,7 +138,9 @@ def render_ui_checkbox(labels: list[str] = ["Option X", "Option Y"], title: str 
     for idx, label_str in enumerate(labels):
         c_id = f"chk_{idx}"
         child_ids.append(c_id)
-        components.append(cl.checkbox(element_id=c_id, label=label_str, checked=False))
+        chk_comp = cl.checkbox(element_id=c_id, label=label_str, checked=False)
+        chk_comp["component"]["CheckBox"]["checked"] = {"path": f"/chk_{idx}_state"}
+        components.append(chk_comp)
         
     # Add Submit Button
     btn_id = "checkbox-submit-btn"
@@ -146,7 +151,7 @@ def render_ui_checkbox(labels: list[str] = ["Option X", "Option Y"], title: str 
     for idx, label_str in enumerate(labels):
         context_list.append({
             "key": f"chk_{idx}_selected",
-            "value": {"literalBoolean": False}
+            "value": {"path": f"/chk_{idx}_state"}
         })
         
     components.append({
