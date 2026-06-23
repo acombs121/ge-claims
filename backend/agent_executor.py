@@ -172,7 +172,13 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
       html_injected = html_template.replace('</head>', f'{injected_script}\n</head>')
       
       # Dynamically size the viewport frame height based on standalone status and template
-      frame_height = 450 if template_name == "base_map" else 600
+      import re
+      height_match = re.search(r'<!--\s*a2ui-preferred-height:\s*(\d+)\s*-->', html_template)
+      if height_match:
+          frame_height = int(height_match.group(1))
+      else:
+          # Fallback defaults based on layout type if not declared in template
+          frame_height = 450 if template_name == "base_map" else 600
       is_standalone = not data.get('kpis') and not data.get('title') and not data.get('subtitle')
       if is_standalone:
           grid_items = data.get('grid', [])
