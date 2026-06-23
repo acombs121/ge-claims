@@ -254,6 +254,12 @@
                 document.getElementById('layerToggles').style.display = 'block';
             }
 
+            // Resize observer to handle dynamic iframe height changes by host container
+            const resizeObserver = new ResizeObserver(() => {
+                if (map) map.invalidateSize();
+            });
+            resizeObserver.observe(document.getElementById('map'));
+
             // Listen to window resize to dynamically recalculate map layout bounds (CSP compliant)
             window.addEventListener('resize', () => {
                 if (map) map.invalidateSize();
