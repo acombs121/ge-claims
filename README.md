@@ -53,6 +53,24 @@ To build and deploy the container to GCP Cloud Run, ensure your GCP SDK is confi
 
 ---
 
+## Registering the Agent in Gemini Enterprise
+
+Once the agent is running locally or deployed to Cloud Run, you can register it in Gemini Enterprise:
+
+1. **Configure the Agent Card:**
+   * Open `agent_card.json` at the root of the project.
+   * Replace the `"url"` placeholder `"https://YOUR_CLOUD_RUN_URL_HERE"` with the public HTTPS URL of your deployed Cloud Run service.
+2. **Register the Extension:**
+   * Open the Gemini Enterprise developer console or extensions panel.
+   * Click **Add Extension / Custom Agent**.
+   * Upload or paste the contents of your configured `agent_card.json`.
+3. **Trigger the Flow:**
+   * Start a new chat session in Gemini Enterprise.
+   * Trigger the agent by typing the following query:
+     > *check the new water damage claim for Walter White*
+
+---
+
 ## Security & Exclusions
 
 * **Git Exclusion:** A robust `.gitignore` prevents logs, local virtual environments, and `.env` credentials from being committed.
