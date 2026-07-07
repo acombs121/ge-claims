@@ -1,7 +1,7 @@
 {
   "name": "ge-insurance-claims",
   "description": "Custom Gemini Enterprise A2UI insurance claims assistant agent.",
-  "url": "https://ge-insurance-claims-753194619596.us-central1.run.app",
+  "url": "https://YOUR_CLOUD_RUN_URL_HERE",
   "version": "1.0.0",
   "protocolVersion": "0.3.0",
   "preferredTransport": "JSONRPC",

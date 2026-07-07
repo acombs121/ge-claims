@@ -702,48 +702,7 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                 action_name = action_data.get("name", "")
                 clean_context = ui_context
                 
-    if action_name in ["save_widget_selection", "load_widget_selection"]:
-        await updater.start_work()
-        state_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'public', 'data')
-        os.makedirs(state_dir, exist_ok=True)
-        state_path = os.path.join(state_dir, f"{session_id}_widget_state.json")
-        
-        import component_mappers as cm
-        import component_library as cl
-        from hr_data import get_standard_widgets_overview
-        
-        parts = []
-        
-        if action_name == "save_widget_selection":
-            with open(state_path, 'w') as f:
-                json.dump(clean_context, f, indent=2)
-            
-            msg = "Active input parameters and picklist selections saved successfully to local session file."
-            native_res = cm.build_confirmation_card({"message": msg})
-            parts.append(types.Part(root=types.TextPart(text=msg)))
-            for m in native_res:
-                parts.append(types.Part(root=types.DataPart(data=m, metadata={"mimeType": "application/json+a2ui"})))
-                
-        elif action_name == "load_widget_selection":
-            loaded_state = {}
-            if os.path.exists(state_path):
-                with open(state_path, 'r') as f:
-                    loaded_state = json.load(f)
-                msg = "Previous execution state successfully retrieved and rehydrated!"
-            else:
-                msg = "No previous state found for this session. Loaded default widgets."
-                
-            widget_data = get_standard_widgets_overview()
-            widget_data["state"] = loaded_state
-            
-            native_res = cm.build_showcase_widgets_card(widget_data)
-            parts.append(types.Part(root=types.TextPart(text=msg)))
-            for m in native_res:
-                parts.append(types.Part(root=types.DataPart(data=m, metadata={"mimeType": "application/json+a2ui"})))
-                
-        await updater.add_artifact(parts, name="response")
-        await updater.complete()
-        return
+
 
     max_retries = 3
     attempt = 0

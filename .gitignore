@@ -25,3 +25,12 @@ backend/data/media_cache/
 
 # Local State persistence rehydration logs
 public/data/
+
+# Internal Planning & Tool residues
+.vitruvius/
+.adk/
+backend/.adk/
+backend/estimate_dispatch_test.txt
+backend/finalize_claim_test.txt
+backend/hr_data.py
+backend/templates/policy_intake.html
