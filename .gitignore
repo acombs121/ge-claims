@@ -35,3 +35,4 @@ backend/finalize_claim_test.txt
 backend/hr_data.py
 backend/templates/policy_intake.html
 GE_integration.md
+agent_card_template.json
