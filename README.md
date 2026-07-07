@@ -1,6 +1,6 @@
 # GECX Insurance Claims Assistant Agent for Gemini Enterprise
 
-GECX Insurance Claims Assistant is an MCA (Model Control Agent) designed to work with **Gemini Enterprise** to automate claims triage, damage verification, risk analysis, contractor mapping, and settlement workflows.
+GECX Insurance Claims Assistant is an A2A (Agent-to-Agent) agent designed to work with **Gemini Enterprise** to automate claims triage, damage verification, risk analysis, contractor mapping, and settlement workflows.
 
 It implements the entire claims handler experience through a series of five structured interactive reports rendered inside Gemini Enterprise's wide side panel (`"canvas-surface"`).
 
