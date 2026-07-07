@@ -1,147 +1,59 @@
-# A2UI Seed Agent
+# GECX Insurance Claims Assistant Agent for Gemini Enterprise
 
-This repository serves as a completely customer-agnostic, highly aesthetic, production-grade A2UI (Agent-to-Agent User Interface) Seed Agent (`a2ui_seed_agent`). 
+GECX Insurance Claims Assistant is an MCA (Model Context Protocol) agent designed to work with **Gemini Enterprise** to automate claims triage, damage verification, risk analysis, contractor mapping, and settlement workflows.
 
-It demonstrates the full spectrum of A2UI 0.8 native standard components and custom high-fidelity dynamic maps and metrics dashboards, deployed securely onto Google Cloud Run utilizing Application Default Credentials (ADC) under a dedicated service account identity.
-
-For an architectural breakdown including how the agent reasons, please refer to [architecture.md](file:///Users/rtejada/Workspace/a2ui-seed-agent/architecture.md).
+It implements the entire claims handler experience through a series of five structured interactive reports rendered inside Gemini Enterprise's wide side panel (`"canvas-surface"`).
 
 ---
 
-## The Core Capability Tour
+## 🚀 Key Beats & Features
 
-### Standard A2UI Native Components
-*   show standard widgets
-*   give me an audio summary
-*   generate custom visual graphic
-*   give me a button
-*   give me a dropdown list
-*   give me tabs
-*   show a modal
-
-### Custom Viewport Extensions (WebFrames)
-*   show a map visualization
-*   give me a simple google map
-*   show the universal dashboard
-*   give me a network dashboard
-*   show the team sprint task backlog
-*   show the checkout register
+1. **Policy Verification & Triage (Beat 1):** Automates the review of coverage limits, policy status, and exclusions based on the specific First Notice of Loss (FNOL) inputs.
+2. **Damage Visual Forensics (Beat 2):** Extracts key damage indicators from uploaded photos (e.g. water depth extraction, flooring materials) using Gemini Multimodal reasoning.
+3. **Risk & Fraud Assessment (Beat 3):** Performs historical audit checks (tenure, loyalty tier, and prior claim frequency) to generate a verified fraud risk score.
+4. **Itemized Estimate & Contractor Map (Beat 4):** Itemizes repair costs, deductibles, and net settlement payouts alongside an interactive dark map pinpointing the closest available local emergency responders.
+5. **Regulatory Settlement Letter & Dispatch Booking (Beat 5):** Outlines a formal regulatory approval letter complying with Ohio state regulations and provides an interactive appointment scheduler to dispatch emergency water restoration.
 
 ---
 
-## Google Cloud IAM Service Account & Security Strategy
+## 🛠️ Tech Stack & Architecture
 
-This agent uses Google Cloud Application Default Credentials (ADC). Secure your terminal locally using `gcloud auth application-default login`, and the deployed Cloud Run instance automatically inherits Vertex AI and GCS storage access via the attached least-privileged service account `a2ui-seed-run-identity@YOUR_GCP_PROJECT_ID.iam.gserviceaccount.com` without managing any physical JSON key files.
+* **Backend:** Python + FastAPI / WSGI server.
+* **UI Renderer:** Agent-to-UI (A2UI) protocol.
+* **Frontend Panels:** Full-height scrollable HTML frames (`WebFrameSrcdoc`) styled in a luxury dark monochrome palette matching Gemini Enterprise UI standards.
+* **Geospatial Services:** Leaflet and Google Maps API for contractor dispatch routing.
 
 ---
 
-## Prerequisites
+## ⚙️ Environment Variables
 
-To deploy or run this seed agent template in a new Google Cloud environment, verify the following prerequisites are fully configured:
+Ensure the following variables are configured in your environment or local `.env` file (not committed to git):
 
-### 1. Enable Google Cloud APIs
-Run the following command inside your gcloud authenticated terminal to enable all required Vertex AI, storage, and maps orchestration APIs:
+| Variable | Description | Example |
+| :--- | :--- | :--- |
+| `GEMINI_MODEL` | Mandatory LLM deployment target (defaults to `gemini-3.5-flash`). | `gemini-3.5-flash` |
+| `GOOGLE_MAPS_API_KEY` | Key used to authorize and render Google Maps. | `AIzaSy...` |
+| `AGENT_URL` | The public endpoint of your deployed service. | `https://ge-insurance-claims-...` |
+
+---
+
+## 📦 Deployment & Setup
+
+### 1. Local Run
+To run the server locally:
 ```bash
-gcloud services enable \
-    aiplatform.googleapis.com \
-    secretmanager.googleapis.com \
-    storage.googleapis.com \
-    run.googleapis.com \
-    cloudbuild.googleapis.com \
-    directions.googleapis.com \
-    places.googleapis.com
+python3 backend/agent.py
 ```
 
-### 2. Provision Cloud Storage Bucket
-* Create a Google Cloud Storage bucket named **`{YOUR_GCP_PROJECT_ID}-a2ui-media-cache`** in the same region as your deployment (e.g., `us-central1`).
-* This bucket is dynamically resolved at runtime to securely cache seekable WAV summaries and visual preview graphics.
-
-### 3. Provision IAM Service Account Identity
-Create a dedicated least-privileged service account named **`a2ui-seed-run-identity`** in your active project:
-* **Service Account Email:** `a2ui-seed-run-identity@{YOUR_GCP_PROJECT_ID}.iam.gserviceaccount.com`
-* **Assign Roles:**
-  1. `roles/aiplatform.user` (Vertex AI User)
-  2. `roles/storage.objectAdmin` (Storage Object Admin) on the media cache bucket.
-
-### 4. Google Maps API Credentials
-* Acquire a **Google Maps API Key** with both **Directions API** and **Places API** enabled.
-* For local development runs, save this key inside a local `.env` file inside the `backend/` directory:
-  ```env
-  GOOGLE_MAPS_API_KEY=your_maps_api_key_here
-  ```
+### 2. Deploy to Cloud Run
+To build and deploy the container to GCP Cloud Run, ensure your GCP SDK is configured and run:
+```bash
+./backend/deploy.sh
+```
 
 ---
 
-## Getting Started
+## 🔒 Security & Exclusions
 
-### 1. Running the Agent Locally
-From the workspace root directory:
-```bash
-cd backend
-python3 main.py
-```
-The server will start listening on `http://127.0.0.1:8080`.
-Verify local tests are fully green before executing deploy scripts:
-```bash
-python3 -m unittest discover -s tests
-```
-
-### 2. Deploying to Cloud Run
-
-To securely deploy this capability showcase template to Google Cloud Run, follow these step-by-step instructions:
-
-1. **Configure your active terminal GCP project ID:**
-   ```bash
-   gcloud config set project YOUR_GCP_PROJECT_ID
-   ```
-2. **Deploy the container live using the secure deploy script:**
-   ```bash
-   cd backend
-   ./deploy.sh
-   ```
-The deploy script dynamically extracts your active GCP project ID from your gcloud configurations, packages the agent, attaches the dedicated least-privileged IAM Service Account (`a2ui-seed-run-identity@YOUR_GCP_PROJECT_ID.iam.gserviceaccount.com`), configures the serverless environment, and updates the Cloud Run AGENT_URL parameter dynamically for seamless A2A header routing.
-
----
-
-## How to Clone & Customize for New Demos
-
-This repository is built as a highly modular, reusable seed template. To clone and customize this agent for a new industry, customer, or use-case specific visual showcase:
-
-### 1. Clone the Repository
-Clone the template codebase into your new custom repository name:
-```bash
-git clone https://github.com/cloud-ai-transformation-team/a2ui-seed-agent.git your-custom-agent
-cd your-custom-agent
-```
-
-### 2. Customize the Agent Card & Identity
-* **Agent Card Registration:** Open [agent_card.json](file:///Users/rtejada/Workspace/a2ui-seed-agent/agent_card.json) and update the `"name"`, `"description"`, and `"skills"` lists to match your custom persona.
-* **LLM System Instructions:** Open [agent.py](file:///Users/rtejada/Workspace/a2ui-seed-agent/backend/agent.py) and modify the `SYSTEM_INSTRUCTION` string to adapt the agent's conversational guidelines and role constraints.
-
-### 3. Establish Contextual Datasets
-To configure your custom industry dataset, organize JSON files inside:
-`backend/data/datasets/[customer_id]/`
-* Use `load_customer_dataset(type_name)` inside `backend/config.py` to dynamically load isolated properties.
-* Populate product catalog lists (`skus.json`), customer locations (`stores.json`), or corporate directories.
-
-### 4. Leverage Unified Themes & Event Bridge
-* **Unified Theme**: Templates can import `/theme.css` to share global design variables (e.g. `--accent-primary`, `--bg-color`) supporting light/dark responsive modes. Override colors at the customer config level to auto-brand.
-* **Event Bridge**: WebFrames can import `/a2ui-bridge.js` to post events back to the parent frame seamlessly using the `A2UI` JavaScript namespace:
-  * `A2UI.triggerAction(actionName, payload)` - Triggers a backend hook or next agent turn.
-  * `A2UI.saveWidgetSelection(widgetName, context)` - Saves UI selections in state.
-  * `A2UI.onStateUpdate(callback)` - Subscribes to live state pushes.
-
----
-
-## The Target Spinoff Playbook Map
-
-| Target Industry | Node/Store Dataset | SKU/Product Dataset | Sourcing/Vendor Registry | Core Action Link |
-| :--- | :--- | :--- | :--- | :--- |
-| **Retail (SCM/Inventory)** | Retail stores, outlets | Finished physical goods | Logistics hubs / Suppliers | Trigger Reallocation / Draft PO |
-| **Tech (Infrastructure)** | Data centers, cloud zones | TPU/GPU instances, VMs | Hardware suppliers | Provision Node / Auto-Scale |
-| **Healthcare (Operations)**| Hospital clinics, ER wards | Medical procedures, equipment | Physician / Nurse schedules | Book Appointment / Dispatch Tech |
-| **Media & Entertainment** | Streaming markets, theaters | Digital titles, ad inventory | Distribution networks / CDN | Deploy Campaign / Route Stream |
-| **Pharma Sales** | Doctor offices, hospitals | Prescription medications | Authorized manufacturers | Draft Drug Distribution PO |
-| **Telco Marketing** | Regional customer segments | Promotion/Data packages | Marketing channels (SMS/Email) | Trigger Ad Campaign |
-| **Financial Services** | Branch locations, ATMs | Credit cards/Loan products | Underwriting partners | Approve Loan Underwrite |
-| **Energy & Utilities** | Power grid substations | Repair/Component parts | Certified contractors | Schedule Dispatch Work Order |
+* **Git Exclusion:** A robust `.gitignore` prevents logs, local virtual environments, and `.env` credentials from being committed.
+* **Secure Auth:** No hardcoded API keys exist in the codebase. All sensitive API keys are parsed securely from GCP Cloud Run environment settings at runtime.
