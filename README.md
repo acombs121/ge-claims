@@ -6,7 +6,7 @@ It implements the entire claims handler experience through a series of five stru
 
 ---
 
-## 🚀 Key Beats & Features
+## Key Beats & Features
 
 1. **Policy Verification & Triage (Beat 1):** Automates the review of coverage limits, policy status, and exclusions based on the specific First Notice of Loss (FNOL) inputs.
 2. **Damage Visual Forensics (Beat 2):** Extracts key damage indicators from uploaded photos (e.g. water depth extraction, flooring materials) using Gemini Multimodal reasoning.
@@ -16,7 +16,7 @@ It implements the entire claims handler experience through a series of five stru
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## Tech Stack & Architecture
 
 * **Backend:** Python + FastAPI / WSGI server.
 * **UI Renderer:** Agent-to-UI (A2UI) protocol.
@@ -25,7 +25,7 @@ It implements the entire claims handler experience through a series of five stru
 
 ---
 
-## ⚙️ Environment Variables
+## Environment Variables
 
 Ensure the following variables are configured in your environment or local `.env` file (not committed to git):
 
@@ -37,7 +37,7 @@ Ensure the following variables are configured in your environment or local `.env
 
 ---
 
-## 📦 Deployment & Setup
+## Deployment & Setup
 
 ### 1. Local Run
 To run the server locally:
@@ -53,7 +53,7 @@ To build and deploy the container to GCP Cloud Run, ensure your GCP SDK is confi
 
 ---
 
-## 🔒 Security & Exclusions
+## Security & Exclusions
 
 * **Git Exclusion:** A robust `.gitignore` prevents logs, local virtual environments, and `.env` credentials from being committed.
 * **Secure Auth:** No hardcoded API keys exist in the codebase. All sensitive API keys are parsed securely from GCP Cloud Run environment settings at runtime.
