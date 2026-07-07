@@ -241,7 +241,7 @@ def get_ui_instruction(base_instruction: str) -> str:
 
     ### CRITICAL PLATFORM RULES (100% TOOL-DRIVEN GENERATION):
     - You are running in a strict **Tool-Driven UI Generation** environment.
-    - You must **NEVER** manually write raw JSON string blocks or output `---a2ui_JSON---` delimiters inside your conversational responses. Doing so will break the client parser.
+    - You must **NEVER** manually write raw JSON string blocks inside your conversational responses. Doing so will break the client parser.
     - If the user asks for *any* interactive visual component, widget, layout, or media summary, you **MUST EXCLUSIVELY CALL THE APPROPRIATE TOOL** in your function calling payload.
     - Do not mock or output JSON text under any circumstances. Just invoke the tool with the correct parameters.
     

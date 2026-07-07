@@ -41,7 +41,7 @@ gcloud run deploy $SERVICE_NAME \
     --region $REGION \
     --allow-unauthenticated \
     --service-account="a2ui-seed-run-identity@$PROJECT_ID.iam.gserviceaccount.com" \
-    --set-env-vars="GEMINI_MODEL=gemini-3.1-flash-lite-preview,GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY,AGENT_URL=$AGENT_URL_VAL" \
+    --set-env-vars="GEMINI_MODEL=gemini-3.5-flash,GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY,AGENT_URL=$AGENT_URL_VAL" \
     --quiet
 
 echo "Deployment complete."

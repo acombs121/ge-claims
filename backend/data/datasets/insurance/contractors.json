@@ -1,0 +1,22 @@
+[
+  {
+    "id": "CON-001",
+    "name": "Columbus Emergency Water Restoration",
+    "phone": "(614) 555-1234",
+    "lat": 39.9650,
+    "lng": -82.9910,
+    "availability": "Immediate",
+    "distance": "0.4 miles",
+    "duration": "2 mins"
+  },
+  {
+    "id": "CON-002",
+    "name": "Ohio Flood Drying Specialists",
+    "phone": "(614) 555-5678",
+    "lat": 39.9575,
+    "lng": -82.9980,
+    "availability": "Within 2 Hours",
+    "distance": "0.6 miles",
+    "duration": "3 mins"
+  }
+]

@@ -1,0 +1,392 @@
+<!-- a2ui-preferred-height: 850 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GECX Approved Contractor Dispatch Map</title>
+    <!-- Leaflet Resources for Fallback/Standard render -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap">
+    <style>
+        :root {
+            --bg-color: #09090b;
+            --card-bg: #18181b;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --accent-primary: #e4e4e7;
+            --border-color: #27272a;
+            --success: #22c55e;
+            --warning: #eab308;
+            --danger: #ef4444;
+        }
+        body {
+            margin: 0;
+            padding: 24px 24px 120px 24px;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            box-sizing: border-box;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .header-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+        }
+        .section-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-primary);
+            margin: 20px 0 12px 0;
+            letter-spacing: 0.05em;
+            border-left: 3px solid var(--text-secondary);
+            padding-left: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.88rem;
+            line-height: 1.4;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        .label-cell {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .value-cell {
+            color: var(--text-primary);
+        }
+        #map-container {
+            position: relative;
+            height: 380px;
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            margin-bottom: 24px;
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+            z-index: 1;
+        }
+        .floating-info {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            z-index: 1000;
+            background: rgba(24, 24, 27, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+            width: 240px;
+        }
+        .info-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        .info-value {
+            font-size: 1.0rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+        .info-sub {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            line-height: 1.3;
+        }
+        /* Custom pulsing marker styles */
+        .pulse-icon {
+            position: relative;
+        }
+        .pulse-dot {
+            width: 12px;
+            height: 12px;
+            background-color: var(--text-primary);
+            border: 2px solid #09090b;
+            border-radius: 50%;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+        .pulse-ring {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--text-secondary);
+            border-radius: 50%;
+            position: absolute;
+            left: -6px;
+            top: -6px;
+            animation: radarPulse 2.0s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        @keyframes radarPulse {
+            0% { transform: scale(0.6); opacity: 1; }
+            100% { transform: scale(2.0); opacity: 0; }
+        }
+        .btn-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 24px;
+            padding-bottom: 24px;
+        }
+        .btn {
+            background-color: #ffffff;
+            color: #09090b;
+            border: 1px solid #ffffff;
+            padding: 12px 32px;
+            border-radius: 24px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.10);
+        }
+        .btn:hover {
+            transform: scale(1.03);
+            background-color: #e4e4e7;
+            border-color: #e4e4e7;
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+    </style>
+    <script>
+        const A2UI = {
+            triggerAction: function(actionName, payload = {}) {
+                window.parent.postMessage({
+                    type: 'a2ui_action',
+                    action: actionName,
+                    data: payload
+                }, '*');
+            }
+        };
+    </script>
+</head>
+<body>
+    <div class="header">
+        <svg style="width: 24px; height: 24px; fill: var(--text-primary);" viewBox="0 0 24 24">
+            <path d="M20.5 3h-17A1.5 1.5 0 002 4.5v15A1.5 1.5 0 003.5 21h17a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0020.5 3zm-11 16H4v-2h5.5v2zm0-4H4v-2h5.5v2zm0-4H4V9h5.5v2zm11 8h-9V9h9v10z"/>
+        </svg>
+        <h1 class="header-title">Itemized Repair Estimate & Dispatch Map</h1>
+    </div>
+
+    <!-- Cost Summary Table -->
+    <div class="section-title">Itemized Repair Estimate & Cost Summary</div>
+    <table>
+        {{ESTIMATE_TABLE_ROWS}}
+    </table>
+
+    <!-- Contractor Dispatch Map Container -->
+    <div class="section-title">Approved Contractor Dispatch Map</div>
+    <div id="map-container">
+        <div id="map"></div>
+        <div class="floating-info">
+            <div class="info-title">Contractor Dispatch</div>
+            <div class="info-value" id="route-summary">Seeding Dispatch Map...</div>
+            <div class="info-sub" id="route-desc">Finding closest Columbus emergency responders...</div>
+        </div>
+    </div>
+
+    <!-- Finalize Button -->
+    <div class="btn-container">
+        <button class="btn" onclick="A2UI.triggerAction('finalize_claim', {claim_id: 'CLM-47209'})">Finalize & Settle</button>
+    </div>
+
+    <!-- Attempt to load Google Maps SDK dynamically if key is supplied at build time -->
+    <script>
+        // Check for Google Maps key
+        const mapsApiKey = "YOUR_GOOGLE_MAPS_API_KEY_HERE";
+        
+        window.loadGoogleMaps = function() {
+            if (mapsApiKey && mapsApiKey !== "YOUR_GOOGLE_MAPS_API" + "_KEY_HERE" && mapsApiKey.trim() !== "") {
+                const script = document.createElement("script");
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&callback=initGoogleMap`;
+                script.async = true;
+                script.defer = true;
+                script.onerror = () => {
+                    console.warn("Failed to load Google Maps API script, falling back to Leaflet.");
+                    initLeafletMap();
+                };
+                document.head.appendChild(script);
+            } else {
+                console.log("No valid Google Maps API Key. Loading Leaflet Map.");
+                initLeafletMap();
+            }
+        };
+
+        window.initGoogleMap = function() {
+            try {
+                const data = window.INJECTED_DATA || {};
+                const claimLoc = data.claim_location || { lat: 39.9612, lng: -82.9935, address: "123 E. Main St, Columbus, OH" };
+                const contractors = data.contractors || [];
+
+                const darkStyle = [
+                    { elementType: "geometry", stylers: [{ color: "#18181b" }] },
+                    { elementType: "labels.text.stroke", stylers: [{ color: "#18181b" }] },
+                    { elementType: "labels.text.fill", stylers: [{ color: "#a1a1aa" }] },
+                    { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#ffffff" }] },
+                    { featureType: "road", elementType: "geometry", stylers: [{ color: "#09090b" }] },
+                    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#27272a" }] },
+                    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#71717a" }] },
+                    { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] }
+                ];
+
+                const map = new google.maps.Map(document.getElementById("map"), {
+                    zoom: 15,
+                    center: { lat: claimLoc.lat, lng: claimLoc.lng },
+                    styles: darkStyle,
+                    disableDefaultUI: true,
+                    zoomControl: true,
+                    gestureHandling: "cooperative"
+                });
+
+                // Claim Location Marker (Home)
+                new google.maps.Marker({
+                    position: { lat: claimLoc.lat, lng: claimLoc.lng },
+                    map: map,
+                    title: "Walter White's Residence",
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        fillColor: "#ef4444",
+                        fillOpacity: 1,
+                        strokeColor: "#ffffff",
+                        strokeWeight: 2,
+                        scale: 8
+                    }
+                });
+
+                // Contractors Pulse Markers
+                contractors.forEach(con => {
+                    new google.maps.Marker({
+                        position: { lat: con.lat, lng: con.lng },
+                        map: map,
+                        title: con.name,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            fillColor: "#ffffff",
+                            fillOpacity: 1,
+                            strokeColor: "#22c55e",
+                            strokeWeight: 2,
+                            scale: 6
+                        }
+                    });
+
+                    // Simulating dispatch line
+                    new google.maps.Polyline({
+                        path: [
+                            { lat: claimLoc.lat, lng: claimLoc.lng },
+                            { lat: con.lat, lng: con.lng }
+                        ],
+                        geodesic: true,
+                        strokeColor: "#a1a1aa",
+                        strokeOpacity: 0.8,
+                        strokeWeight: 3,
+                        map: map
+                    });
+                });
+
+                document.getElementById("route-summary").innerText = "2 Contractors Found";
+                document.getElementById("route-desc").innerText = `Dispatch fallback map active. Coordinates matched around ${claimLoc.address} in Columbus, OH.`;
+            } catch (e) {
+                console.error("Google Maps initialization failed, falling back to Leaflet:", e);
+                initLeafletMap();
+            }
+        };
+
+        window.initLeafletMap = function() {
+            const data = window.INJECTED_DATA || {};
+            const claimLoc = data.claim_location || { lat: 39.9612, lng: -82.9935, address: "123 E. Main St, Columbus, OH" };
+            const contractors = data.contractors || [];
+
+            const map = L.map('map', {
+                center: [claimLoc.lat, claimLoc.lng],
+                zoom: 15,
+                zoomControl: false,
+                scrollWheelZoom: false
+            });
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 19
+            }).addTo(map);
+
+            // Walter White Home Marker (Red Circle)
+            L.circleMarker([claimLoc.lat, claimLoc.lng], {
+                radius: 8,
+                fillColor: "#ef4444",
+                color: "#ffffff",
+                weight: 2,
+                fillOpacity: 1
+            }).addTo(map)
+              .bindPopup(`<b>Walter White's Residence</b><br/>${claimLoc.address}`)
+              .openPopup();
+
+            // Pulse Icons for Contractors
+            const pulseIcon = L.divIcon({
+                className: 'pulse-icon',
+                html: '<div class="pulse-ring"></div><div class="pulse-dot"></div>',
+                iconSize: [24, 24],
+                iconAnchor: [6, 6]
+            });
+
+            contractors.forEach(con => {
+                L.marker([con.lat, con.lng], { icon: pulseIcon }).addTo(map)
+                 .bindPopup(`
+                     <div style="color: #09090b;">
+                         <b>${con.name}</b><br/>
+                         Phone: ${con.phone}<br/>
+                         Availability: <span style="color: #22c55e; font-weight: bold;">${con.availability}</span>
+                     </div>
+                 `);
+
+                // Draw line between claim location and contractor to simulate route
+                L.polyline([
+                    [claimLoc.lat, claimLoc.lng],
+                    [con.lat, con.lng]
+                ], {
+                    color: '#a1a1aa',
+                    weight: 3,
+                    dashArray: '5, 8',
+                    opacity: 0.8
+                }).addTo(map);
+            });
+
+            document.getElementById("route-summary").innerText = "2 Contractors Found";
+            document.getElementById("route-desc").innerText = `Dispatch fallback map active. Coordinates matched around ${claimLoc.address} in Columbus, OH.`;
+        };
+
+        window.addEventListener('load', window.loadGoogleMaps);
+    </script>
+</body>
+</html>

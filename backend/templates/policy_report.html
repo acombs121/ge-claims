@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GECX Claim Intake & Coverage Verification Report</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap">
+    <style>
+        :root {
+            --bg-color: #09090b;
+            --card-bg: #18181b;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --accent-primary: #e4e4e7;
+            --border-color: #27272a;
+            --success: #22c55e;
+            --warning: #eab308;
+            --danger: #ef4444;
+        }
+        body {
+            margin: 0;
+            padding: 24px 24px 80px 24px;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            box-sizing: border-box;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .header-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+        }
+        .sub-header {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .meta-box {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+        .meta-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .meta-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+        .section-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-primary);
+            margin: 24px 0 12px 0;
+            letter-spacing: 0.05em;
+            border-left: 3px solid var(--text-secondary);
+            padding-left: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.88rem;
+            line-height: 1.4;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        .label-cell {
+            color: var(--text-secondary);
+            width: 30%;
+            font-weight: 500;
+        }
+        .value-cell {
+            color: var(--text-primary);
+        }
+        .btn-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 32px;
+            padding-bottom: 24px;
+        }
+        .btn {
+            background-color: #ffffff;
+            color: #09090b;
+            border: 1px solid #ffffff;
+            padding: 12px 32px;
+            border-radius: 24px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+        }
+        .btn:hover {
+            transform: scale(1.03);
+            background-color: #e4e4e7;
+            border-color: #e4e4e7;
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+    </style>
+    <script>
+        const A2UI = {
+            triggerAction: function(actionName, payload = {}) {
+                window.parent.postMessage({
+                    type: 'a2ui_action',
+                    action: actionName,
+                    data: payload
+                }, '*');
+            }
+        };
+    </script>
+</head>
+<body>
+    <div class="header">
+        <svg style="width: 24px; height: 24px; fill: var(--text-primary);" viewBox="0 0 24 24">
+            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14H7v-2h3v2zm3-4h-3v-2h3v2zm3-4H7V7h10v2z"/>
+        </svg>
+        <h1 class="header-title">Claim Intake & Coverage Verification Report</h1>
+    </div>
+
+    <div class="sub-header">
+        <div class="meta-box">
+            <div class="meta-label">Report ID</div>
+            <div class="meta-value">REP-2026-0706-A</div>
+        </div>
+        <div class="meta-box">
+            <div class="meta-label">Date Filed</div>
+            <div class="meta-value">2026-07-06</div>
+        </div>
+        <div class="meta-box">
+            <div class="meta-label">Status</div>
+            <div class="meta-value" style="color: var(--success);">INTAKE VERIFIED</div>
+        </div>
+    </div>
+
+    <div class="section-title">1. Claim Notice & Loss Details</div>
+    <table>
+        <tr>
+            <td class="label-cell">Claim ID</td>
+            <td class="value-cell">CLM-47209</td>
+        </tr>
+        <tr>
+            <td class="label-cell">Loss Type</td>
+            <td class="value-cell">Water Damage</td>
+        </tr>
+        <tr>
+            <td class="label-cell">Reported Source</td>
+            <td class="value-cell">Washing Machine Hose Leak</td>
+        </tr>
+        <tr>
+            <td class="label-cell">Loss Address & Time</td>
+            <td class="value-cell">123 E. Main St, Columbus, OH 43215 | July 6, 2026 (08:30 AM EST)</td>
+        </tr>
+        <tr>
+            <td class="label-cell">Incident Description</td>
+            <td class="value-cell">Plumbing leak originating in laundry room from washing machine hose leak, spreading into adjacent bathroom.</td>
+        </tr>
+    </table>
+
+    <div class="section-title">2. Policyholder Profile & Verification</div>
+    <table>
+        <tr>
+            <td class="label-cell">Insured Name</td>
+            <td class="value-cell">Walter White</td>
+        </tr>
+        <tr>
+            <td class="label-cell">Policy Number</td>
+            <td class="value-cell">POL-8839201</td>
+        </tr>
+        <tr>
+            <td class="label-cell">Policy Status</td>
+            <td class="value-cell" style="color: var(--success); font-weight: 600;">ACTIVE (Gold Tier)</td>
+        </tr>
+        <tr>
+            <td class="label-cell">Tenure & Screening</td>
+            <td class="value-cell">4 years continuous coverage | CLEARED (No prior claims in last 36 months)</td>
+        </tr>
+    </table>
+
+    <div class="section-title">3. Coverage & Financial Limits Summary</div>
+    <table>
+        <tr>
+            <td class="label-cell">Dwelling Limit</td>
+            <td class="value-cell">$50,000</td>
+        </tr>
+        <tr>
+            <td class="label-cell">All-Peril Deductible</td>
+            <td class="value-cell">$1,000</td>
+        </tr>
+        <tr>
+            <td class="label-cell">Estimated Exposure</td>
+            <td class="value-cell" style="color: var(--warning); font-weight: 500;">$1,600 (Within policy coverage limits)</td>
+        </tr>
+    </table>
+
+    <div class="section-title">4. Peril Analysis & Coverage Applicability</div>
+    <table>
+        <tr>
+            <td class="label-cell">Applicable Inclusions</td>
+            <td class="value-cell" style="color: var(--success);">Sudden/Accidental Water Discharge, Fire, Wind/Hail</td>
+        </tr>
+        <tr>
+            <td class="label-cell">Policy Exclusions</td>
+            <td class="value-cell" style="color: var(--danger);">Sewer Backup, Earthquake, Intentional Acts (Sewer check required during analysis)</td>
+        </tr>
+        <tr>
+            <td class="label-cell">Determination</td>
+            <td class="value-cell" style="font-weight: 500;">Preliminary intake confirms sudden accidental water discharge is covered under POL-8839201. Proceed to photo forensics.</td>
+        </tr>
+    </table>
+
+    <div class="btn-container">
+        <button class="btn" onclick="A2UI.triggerAction('analyze_photos', {claim_id: 'CLM-47209'})">Analyze Photos</button>
+    </div>
+</body>
+</html>

@@ -1,0 +1,37 @@
+{
+  "claim_id": "CLM-47209",
+  "policy_number": "POL-8839201",
+  "status": "Under Investigation",
+  "date_filed": "2026-07-06",
+  "type": "Water Damage",
+  "description": "Plumbing leak at residential property, washing machine hose leak.",
+  "photos": [
+    "bathroom_water_damage.jpg",
+    "laundry_room_flooding.jpg"
+  ],
+  "location": {
+    "address": "123 E. Main St, Columbus, OH 43215",
+    "lat": 39.9612,
+    "lng": -82.9935
+  },
+  "risk_assessment": {
+    "score": 12,
+    "rating": "Low Risk",
+    "fraud_check": "Cleared",
+    "details": [
+      "No historical prior claims",
+      "Consistent billing and premium payments",
+      "Tenure details verified"
+    ]
+  },
+  "estimation": {
+    "items": [
+      {"description": "Water extraction and mitigation", "cost": 500},
+      {"description": "Floor drying & remediation", "cost": 800},
+      {"description": "Baseboard replacement", "cost": 300}
+    ],
+    "deductible": 1000,
+    "total_damage": 1600,
+    "net_payout": 600
+  }
+}

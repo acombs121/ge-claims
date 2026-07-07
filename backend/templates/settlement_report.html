@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GECX Settlement Approval & Dispatch Scheduler</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap">
+    <style>
+        :root {
+            --bg-color: #09090b;
+            --card-bg: #18181b;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --accent-primary: #e4e4e7;
+            --border-color: #27272a;
+            --success: #22c55e;
+            --warning: #eab308;
+            --danger: #ef4444;
+        }
+        body {
+            margin: 0;
+            padding: 24px 24px 120px 24px;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            box-sizing: border-box;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .header-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+        }
+        .letter-container {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+        .letter-header {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 24px;
+            margin-bottom: 20px;
+            font-size: 0.82rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+        }
+        .meta-item {
+            display: flex;
+            justify-content: space-between;
+        }
+        .meta-lbl {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .meta-val {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .salutation {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .letter-body {
+            font-size: 0.88rem;
+            line-height: 1.5;
+            color: var(--text-primary);
+            margin-bottom: 14px;
+        }
+        .highlight-box {
+            background: rgba(255, 255, 255, 0.04);
+            border-left: 4px solid var(--text-secondary);
+            padding: 12px 16px;
+            border-radius: 4px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            line-height: 1.4;
+            color: var(--text-primary);
+            margin: 16px 0;
+            border-top: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .signoff {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-top: 20px;
+            line-height: 1.4;
+        }
+        .section-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-primary);
+            margin: 24px 0 12px 0;
+            letter-spacing: 0.05em;
+            border-left: 3px solid var(--text-secondary);
+            padding-left: 8px;
+        }
+        .scheduler-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .slot-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .slot-card:hover {
+            border-color: var(--text-secondary);
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+        .slot-card.active {
+            border-color: #ffffff;
+            background-color: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.15);
+        }
+        .slot-day {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .slot-time {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+        .slot-card.active .slot-time {
+            color: #ffffff;
+        }
+        .btn-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 32px;
+            padding-bottom: 24px;
+        }
+        .btn {
+            background-color: var(--success);
+            color: #09090b;
+            border: 1px solid var(--success);
+            padding: 12px 36px;
+            border-radius: 24px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+        }
+        .btn:hover {
+            transform: scale(1.03);
+            background-color: #4ade80;
+            border-color: #4ade80;
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+    </style>
+    <script>
+        let selectedSlot = "Tue 9AM";
+
+        const A2UI = {
+            triggerAction: function(actionName, payload = {}) {
+                window.parent.postMessage({
+                    type: 'a2ui_action',
+                    action: actionName,
+                    data: payload
+                }, '*');
+            }
+        };
+
+        function selectSlot(card, slotValue) {
+            document.querySelectorAll('.slot-card').forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            selectedSlot = slotValue;
+        }
+
+        function confirmSettlement() {
+            A2UI.triggerAction('confirm_settlement', {
+                claim_id: 'CLM-47209',
+                slot: selectedSlot
+            });
+        }
+    </script>
+</head>
+<body>
+    <div class="header">
+        <svg style="width: 24px; height: 24px; fill: var(--text-primary);" viewBox="0 0 24 24">
+            <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+        </svg>
+        <h1 class="header-title">Settlement Approval & Repair Dispatch</h1>
+    </div>
+
+    <!-- Settlement Approval Letter -->
+    <div class="letter-container">
+        <div class="letter-header">GECX INSURANCE COMPANY — OFFICIAL CLAIM APPROVAL NOTICE</div>
+        <div class="meta-grid">
+            <div class="meta-item">
+                <span class="meta-lbl">Date:</span>
+                <span class="meta-val">July 6, 2026</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-lbl">Claim Number:</span>
+                <span class="meta-val">CLM-47209</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-lbl">Insured:</span>
+                <span class="meta-val">Walter White</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-lbl">Policy Number:</span>
+                <span class="meta-val">POL-8839201</span>
+            </div>
+            <div class="meta-item" style="grid-column: span 2;">
+                <span class="meta-lbl">Property Address:</span>
+                <span class="meta-val">123 E. Main St, Columbus, OH 43215</span>
+            </div>
+        </div>
+
+        <div class="salutation">Dear Walter White,</div>
+        <div class="letter-body">
+            We have completed our investigation of the sudden accidental plumbing leak reported on July 6, 2026. 
+            Based on our multimodal damage forensics and coverage verification, we are pleased to inform you that your water damage claim has been APPROVED.
+        </div>
+        <div class="highlight-box">
+            Estimated Loss Cost: $1,600<br>
+            Less Policy Deductible: -$1,000<br>
+            Net Proposed Settlement Payout: $600
+        </div>
+        <div class="letter-body">
+            In accordance with Ohio Department of Insurance regulations, this notice serves as your official claim approval. 
+            To coordinate repairs, please select an emergency dispatch booking slot below for Columbus Emergency Water Restoration.
+        </div>
+        <div class="signoff">
+            Sincerely,<br>
+            <strong>GECX Claims Assistant Agent</strong>
+        </div>
+    </div>
+
+    <!-- Appointment Dispatch Scheduler -->
+    <div class="section-title">Select Repair Dispatch Slot</div>
+    <div class="scheduler-grid">
+        <div class="slot-card active" onclick="selectSlot(this, 'Tue 9AM')">
+            <span class="slot-day">Tue July 7</span>
+            <span class="slot-time">9:00 AM EST</span>
+        </div>
+        <div class="slot-card" onclick="selectSlot(this, 'Tue 2PM')">
+            <span class="slot-day">Tue July 7</span>
+            <span class="slot-time">2:00 PM EST</span>
+        </div>
+        <div class="slot-card" onclick="selectSlot(this, 'Wed 10AM')">
+            <span class="slot-day">Wed July 8</span>
+            <span class="slot-time">10:00 AM EST</span>
+        </div>
+    </div>
+
+    <div class="btn-container">
+        <button class="btn" onclick="confirmSettlement()">Confirm Settlement & Issue Payout</button>
+    </div>
+</body>
+</html>

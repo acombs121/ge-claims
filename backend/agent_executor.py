@@ -98,12 +98,15 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                       
                       has_surface_id = False
                       for ctx in action_node["context"]:
-                          if isinstance(ctx, dict) and "surfaceId" in ctx:
-                              ctx["surfaceId"] = surface_id
+                          if isinstance(ctx, dict) and (ctx.get("key") == "surfaceId" or "surfaceId" in ctx):
+                              ctx["key"] = "surfaceId"
+                              ctx["value"] = {"literalString": str(surface_id)}
+                              if "surfaceId" in ctx:
+                                  del ctx["surfaceId"]
                               has_surface_id = True
                               break
                       if not has_surface_id:
-                          action_node["context"].append({"surfaceId": surface_id})
+                          action_node["context"].append({"key": "surfaceId", "value": {"literalString": str(surface_id)}})
                           
               for k, v in obj.items():
                   update_node(v)
@@ -125,6 +128,21 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
       elif isinstance(v, dict):
           return {k: self._clean_context_value(val) for k, val in v.items()}
       return v
+
+  def _parse_ui_context(self, ui_context):
+      """Parses A2UI context lists or dicts into a clean key-value mapping."""
+      if isinstance(ui_context, dict):
+          return {k: self._clean_context_value(v) for k, v in ui_context.items()}
+      elif isinstance(ui_context, list):
+          result = {}
+          for item in ui_context:
+              if isinstance(item, dict) and "key" in item:
+                  val = item.get("value")
+                  if isinstance(val, dict):
+                      val = val.get("literalString") or val.get("literalNumber") or val.get("literalBoolean") or val.get("path") or val
+                  result[item["key"]] = self._clean_context_value(val)
+          return result
+      return {}
 
 
   def _wrap_tool(self, tool_func, tool_name):
@@ -634,21 +652,8 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
     except Exception as e:
         logger.error(f"A2UI-MEDIA-INTERCEPT | Error mapping parts: {e}") 
         
-    # Extract surfaceId from userAction context if present, otherwise default to a new task-based ID
-    surface_id = f"surface-{task.id}"
-    if context.message and hasattr(context.message, 'parts'):
-        for part in context.message.parts:
-            if hasattr(part, 'root') and hasattr(part.root, 'data') and isinstance(part.root.data, dict) and "userAction" in part.root.data:
-                action_data = part.root.data["userAction"]
-                ui_context = action_data.get("context", {})
-                if isinstance(ui_context, dict) and "surfaceId" in ui_context:
-                    s_id = ui_context["surfaceId"]
-                    if isinstance(s_id, list) and s_id:
-                        surface_id = str(s_id[0])
-                    elif s_id:
-                        surface_id = str(s_id)
-                    logger.info(f"A2UI-INJECT | Extracted active surfaceId from userAction: {surface_id}")
-                    break
+    # Use canvas-surface so Gemini Enterprise renders reports and legal letters in the spacious right-hand auxiliary side panel!
+    surface_id = "canvas-surface"
     self._active_surface_id = surface_id
 
     updater = tasks.TaskUpdater(event_queue, task.id, task.context_id)
@@ -681,11 +686,9 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
         for part in context.message.parts:
             if hasattr(part, 'root') and hasattr(part.root, 'data') and isinstance(part.root.data, dict) and "userAction" in part.root.data:
                 action_data = part.root.data["userAction"]
-                ui_context = action_data.get("context", {})
+                ui_context = self._parse_ui_context(action_data.get("context", {}))
                 action_name = action_data.get("name", "")
-                # Ensure lists are unwrapped to strings for the LLM to avoid confusion
-                clean_context = {k: self._clean_context_value(v) for k, v in ui_context.items()}
-                current_query_text = f"User action triggered: name={action_name}, context={json.dumps(clean_context)}"
+                current_query_text = f"User action triggered: name={action_name}, context={json.dumps(ui_context)}"
                 logger.info(f"A2UI-INJECT | Updated query text with UI event context: {current_query_text}")
                 
     # Action Event Intercept for Stateful Widget Saving & Rehydration
@@ -695,9 +698,9 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
         for part in context.message.parts:
             if hasattr(part, 'root') and hasattr(part.root, 'data') and isinstance(part.root.data, dict) and "userAction" in part.root.data:
                 action_data = part.root.data["userAction"]
-                ui_context = action_data.get("context", {})
+                ui_context = self._parse_ui_context(action_data.get("context", {}))
                 action_name = action_data.get("name", "")
-                clean_context = {k: self._clean_context_value(v) for k, v in ui_context.items()}
+                clean_context = ui_context
                 
     if action_name in ["save_widget_selection", "load_widget_selection"]:
         await updater.start_work()

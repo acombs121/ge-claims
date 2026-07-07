@@ -1,7 +1,7 @@
 {
-  "name": "a2ui_seed_agent",
-  "description": "A2UI Seed Agent demonstrating dynamic widgets, custom interactive Leaflet overlays, Vega charts, organization networks, and WAV audio podcast briefings.",
-  "url": "https://a2ui-seed-agent-YOUR_PROJECT_NUMBER.us-central1.run.app",
+  "name": "ge-insurance-claims",
+  "description": "Custom Gemini Enterprise A2UI insurance claims assistant agent.",
+  "url": "https://ge-insurance-claims-753194619596.us-central1.run.app",
   "version": "1.0.0",
   "protocolVersion": "0.3.0",
   "preferredTransport": "JSONRPC",
@@ -30,55 +30,55 @@
   },
   "skills": [
     {
-      "id": "standard_widgets_showcase",
-      "name": "Standard A2UI Components Showcase",
-      "description": "Renders and displays native A2UI standard components like Tabs, Modals, TextFields, CheckBoxes, MultipleChoices, and Sliders.",
+      "id": "claims_intake_triage",
+      "name": "Claims Intake & Policy Triage",
+      "description": "Retrieves policyholder coverage limits, deductibles, and flags Ohio-specific exclusions.",
       "tags": [
-        "widgets",
-        "components",
-        "native"
+        "insurance",
+        "policy",
+        "triage"
       ],
       "examples": [
-        "let's see standard widgets overview"
+        "check the new water damage claim for Walter White"
       ]
     },
     {
-      "id": "interactive_maps_overlay",
-      "name": "High-Fidelity Geographic Map Overlays",
-      "description": "Generates and layers density heatmaps, pulsing radar markers, animated polylines, and toggle layers dynamically.",
+      "id": "multimodal_damage_assessment",
+      "name": "Multimodal AI Damage Assessment",
+      "description": "Analyzes uploaded property damage photos side-by-side and extracts water depth, flooring material, and cause.",
       "tags": [
-        "maps",
-        "leaflet",
-        "routing"
+        "vision",
+        "assessment",
+        "multimodal"
       ],
       "examples": [
-        "show map visualization"
+        "analyze damage photos"
       ]
     },
     {
-      "id": "universal_dashboard_metrics",
-      "name": "Universal Metric Dashboard and Graphs",
-      "description": "Visualizes org hierarchy network graphs, interactive sliders, KPI cards, and Vega-Lite graphs.",
+      "id": "risk_historical_analytics",
+      "name": "Risk & Historical Claims Analytics",
+      "description": "Queries 5-year claim history, loyalty tiers, and displays a visual risk score gauge with fraud verification.",
       "tags": [
-        "dashboard",
-        "d3-network",
-        "charts"
+        "risk",
+        "analytics",
+        "fraud"
       ],
       "examples": [
-        "show universal dashboard"
+        "run risk analysis"
       ]
     },
     {
-      "id": "seekable_audio_tts",
-      "name": "Transcoded Speech WAV Summarizer",
-      "description": "Synthesizes 150-word briefings seekable natively in browser players.",
+      "id": "repair_estimation_dispatch",
+      "name": "Repair Estimation & Contractor Map Dispatch",
+      "description": "Calculates itemized net settlement payouts and displays an interactive Columbus, OH contractor dispatch map.",
       "tags": [
-        "audio",
-        "tts",
-        "podcast"
+        "estimation",
+        "dispatch",
+        "map"
       ],
       "examples": [
-        "give me an audio summary"
+        "draft repair estimate"
       ]
     }
   ]

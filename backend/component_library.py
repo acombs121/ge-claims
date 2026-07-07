@@ -44,6 +44,12 @@ def button(
 ) -> list[dict[str, Any]]:
   """Generates a Button component and its required Text child component."""
   text_id = f"txt_{element_id}"
+  formatted_context = []
+  for item in context:
+      val = item.get("value")
+      if isinstance(val, (str, int, float, bool)):
+          val = {"literalString": str(val)}
+      formatted_context.append({"key": item.get("key"), "value": val})
   return [
       {
           "id": element_id,
@@ -53,7 +59,7 @@ def button(
                   "primary": primary,
                   "action": {
                       "name": action_name,
-                      "context": context,
+                      "context": formatted_context,
                   },
               }
           },
@@ -159,6 +165,14 @@ def begin_rendering(
       "beginRendering": {
           "surfaceId": surface_id,
           "root": root,
+      }
+  }
+
+def delete_surface(*, surface_id: str) -> dict[str, Any]:
+  """Generates a deleteSurface payload."""
+  return {
+      "deleteSurface": {
+          "surfaceId": surface_id,
       }
   }
 

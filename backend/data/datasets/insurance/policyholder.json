@@ -1,0 +1,25 @@
+{
+  "policy_number": "POL-8839201",
+  "name": "Walter White",
+  "email": "w.white@heisenberg.com",
+  "phone": "(614) 555-0199",
+  "address": "123 E. Main St, Columbus, OH 43215",
+  "policy_status": "Active",
+  "policy_limit": 50000,
+  "deductible": 1000,
+  "policy_tenure": "4 years",
+  "history": {
+    "prior_claims_5_years": 0,
+    "loyalty_tier": "Gold"
+  },
+  "exclusions": [
+    "Sewer Backup",
+    "Earthquake Damage",
+    "Intentional Acts"
+  ],
+  "inclusions": [
+    "Sudden and Accidental Water Damage",
+    "Fire Damage",
+    "Wind/Hail Damage"
+  ]
+}
