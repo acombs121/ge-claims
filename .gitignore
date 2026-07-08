@@ -60,3 +60,4 @@ backend/data/logos/
 backend/data/datasets/default/
 backend/scripts/
 backend/tests/
+backend/templates/unused_reference/
