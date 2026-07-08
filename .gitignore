@@ -37,3 +37,16 @@ backend/templates/policy_intake.html
 GE_integration.md
 agent_card_template.json
 architecture.md
+
+# Unused A2UI Seed Residues & Templates
+backend/media_tools.py
+backend/ui_generators.py
+backend/firestore_client.py
+backend/create_engine.py
+backend/component_mappers.py
+backend/templates/dashboard.html
+backend/templates/universal_dashboard.html
+backend/templates/base_map.html
+backend/templates/google_map.html
+backend/templates/kanban_board.html
+backend/templates/pos_register.html

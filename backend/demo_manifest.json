@@ -3,144 +3,60 @@
     {
       "phase": 1,
       "trigger_queries": [
-        "let's see standard widgets overview",
-        "show standard widgets",
-        "widget showcase",
-        "A2UI standard components"
+        "check the new water damage claim for Walter White",
+        "verify coverage for Walter White",
+        "load policy triage report",
+        "policy intake"
       ],
       "fuzzy_matching": true,
-      "action_tool": "get_standard_widgets_overview",
-      "output_mode": "native",
-      "native_mapper": "build_showcase_widgets_card"
+      "action_tool": "get_policy_triage",
+      "output_mode": "direct"
     },
     {
       "phase": 2,
       "trigger_queries": [
-        "show map visualization",
-        "interactive leaflet map",
-        "load maps demo",
-        "route optimization map",
-        "give me a complex map visualization",
-        "complex map visualization",
-        "show a complex map visualization"
+        "analyze claim photos",
+        "analyze photos",
+        "run photo forensics extraction"
       ],
       "fuzzy_matching": true,
-      "action_tool": "get_map_visualization",
-      "output_mode": "iframe",
-      "template": "base_map"
-    },
-    {
-      "phase": 2.5,
-      "trigger_queries": [
-        "give me a simple google map",
-        "simple map URL"
-      ],
-      "fuzzy_matching": true,
-      "action_tool": "get_map_visualization",
-      "action_tool_args": {
-        "intent": "simple"
-      },
-      "output_mode": "url"
+      "action_tool": "analyze_photos",
+      "output_mode": "direct"
     },
     {
       "phase": 3,
       "trigger_queries": [
-        "show universal dashboard",
-        "show the universal dashboard",
-        "kpi simulator dashboard"
+        "assess claim risk",
+        "check fraud screening",
+        "fraud risk assessment",
+        "assess risk"
       ],
       "fuzzy_matching": true,
-      "action_tool": "get_universal_dashboard_data",
-      "output_mode": "iframe",
-      "template": "universal_dashboard"
-    },
-    {
-      "phase": 3.5,
-      "trigger_queries": [
-        "load D3 network dashboard"
-      ],
-      "fuzzy_matching": true,
-      "action_tool": "get_d3_network_data",
-      "output_mode": "iframe",
-      "template": "dashboard"
+      "action_tool": "assess_risk",
+      "output_mode": "direct"
     },
     {
       "phase": 4,
       "trigger_queries": [
-        "give me an audio summary",
-        "give me a short audio summary",
-        "short audio summary",
-        "podcast voice briefing",
-        "audio presentation summary"
+        "view repair estimate and dispatch map",
+        "show dispatch map",
+        "estimate & dispatch",
+        "estimate and dispatch"
       ],
-      "fuzzy_matching": false,
-      "action_tool": "generate_audio_summary",
-      "action_tool_args": {
-        "length": "short"
-      },
-      "output_mode": "native",
-      "native_mapper": "build_audio_card",
-      "audio_config": {
-        "mode": "podcast",
-        "voices": ["Aoede", "Charon"],
-        "speakers": ["Host", "Expert"]
-      }
-    },
-    {
-      "phase": 4.5,
-      "trigger_queries": [
-        "give me a long audio summary",
-        "long audio summary"
-      ],
-      "fuzzy_matching": false,
-      "action_tool": "generate_audio_summary",
-      "action_tool_args": {
-        "length": "long"
-      },
-      "output_mode": "native",
-      "native_mapper": "build_audio_card",
-      "audio_config": {
-        "mode": "podcast",
-        "voices": ["Aoede", "Charon"],
-        "speakers": ["Host", "Expert"]
-      }
+      "fuzzy_matching": true,
+      "action_tool": "estimate_dispatch",
+      "output_mode": "direct"
     },
     {
       "phase": 5,
       "trigger_queries": [
-        "generate custom visual graphic",
-        "multimodal image generation"
-      ],
-      "fuzzy_matching": false,
-      "action_tool": "generate_hr_graphic",
-      "output_mode": "native",
-      "native_mapper": "build_image_card"
-    },
-    {
-      "phase": 7,
-      "trigger_queries": [
-        "show the team sprint task backlog",
-        "show the sprint backlog",
-        "sprint task backlog",
-        "generate product backlog"
+        "finalize claim and settle",
+        "finalize claim",
+        "finalize and settle"
       ],
       "fuzzy_matching": true,
-      "action_tool": "get_sprint_backlog",
-      "output_mode": "iframe",
-      "template": "kanban_board"
-    },
-    {
-      "phase": 8,
-      "trigger_queries": [
-        "show the checkout register",
-        "checkout register",
-        "lookup POS receipt",
-        "show checkout register"
-      ],
-      "fuzzy_matching": true,
-      "action_tool": "get_pos_checkout",
-      "output_mode": "iframe",
-      "template": "pos_register"
+      "action_tool": "finalize_claim",
+      "output_mode": "direct"
     }
   ]
 }

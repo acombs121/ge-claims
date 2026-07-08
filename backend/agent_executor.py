@@ -567,6 +567,8 @@ class AdkAgentToA2AExecutor(agent_execution.AgentExecutor):
                                       cl.web_frame_url(element_id="root-url", url=url_str)
                                   ])
                               ]
+                          elif output_mode == "direct":
+                              processed_data = result
                           elif output_mode == "native":
                                mapper_name = step.get("native_mapper")
                                import component_mappers
