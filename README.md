@@ -9,9 +9,19 @@ It implements the entire claims handler experience through a series of five stru
 ## Key Beats & Features
 
 1. **Policy Verification & Triage (Beat 1):** Automates the review of coverage limits, policy status, and exclusions based on the specific First Notice of Loss (FNOL) inputs.
+
+   ![Policy Verification & Triage](images/ge-claim-1.png)
+
 2. **Damage Visual Forensics (Beat 2):** Extracts key damage indicators from uploaded photos (e.g. water depth extraction, flooring materials) using Gemini Multimodal reasoning.
+
+   ![Damage Visual Forensics](images/ge-claim-2.png)
+
 3. **Risk & Fraud Assessment (Beat 3):** Performs historical audit checks (tenure, loyalty tier, and prior claim frequency) to generate a verified fraud risk score.
+
 4. **Itemized Estimate & Contractor Map (Beat 4):** Itemizes repair costs, deductibles, and net settlement payouts alongside an interactive dark map pinpointing the closest available local emergency responders.
+
+   ![Itemized Estimate & Contractor Map](images/ge-claim-3.png)
+
 5. **Regulatory Settlement Letter & Dispatch Booking (Beat 5):** Outlines a formal regulatory approval letter complying with Ohio state regulations and provides an interactive appointment scheduler to dispatch emergency water restoration.
 
 ---
@@ -75,3 +85,20 @@ Once the agent is running locally or deployed to Cloud Run, you can register it 
 
 * **Git Exclusion:** A robust `.gitignore` prevents logs, local virtual environments, and `.env` credentials from being committed.
 * **Secure Auth:** No hardcoded API keys exist in the codebase. All sensitive API keys are parsed securely from GCP Cloud Run environment settings at runtime.
+
+---
+
+> [!NOTE]
+> **NB: A2UI Canvas Rendering Workaround**
+> Due to Google Cloud Console's sandbox security settings, the Gemini Enterprise console restricts custom elements from loading third-party content and disables rendering of iframe canvas cards by default.
+> 
+> To enable rendering of the interactive reports (canvas UI frames), you can use a **Bookmarklet** to override this restriction:
+> 
+> 1. Show your browser's Bookmarks Bar (`Cmd + Shift + B` on macOS).
+> 2. Right-click the bookmarks bar and select **Add Page** (or **Add Bookmark**).
+> 3. Name the bookmark: `Enable A2UI Canvas`
+> 4. Set the **URL** (or Location) to:
+>    ```javascript
+>    javascript:(function(){const%20el=['ucs-a2ui','a2ui-web-frame-srcdoc','a2ui-web-frame-url'];el.forEach(t=>{const%20c=customElements.get(t);if(c&&c.prototype){Object.defineProperty(c.prototype,'iframeEnabled',{get:function(){return%20true;},set:function(){},configurable:true});}});console.log('✓%20A2UI%20Canvas%20Enabled');})()
+>    ```
+> 5. **Usage:** You must click the **`Enable A2UI Canvas`** bookmark on the **Gemini Enterprise landing page *before*** triggering or clicking on the agent. Clicking the bookmarklet pre-emptively overrides the rendering restrictions so the canvas loads properly when the agent starts.
