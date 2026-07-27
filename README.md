@@ -1,4 +1,4 @@
-# Gemini Enterprise Insurance Claims Assistant Agent for Gemini Enterprise
+# Gemini Enterprise Insurance Claims Assistant Agent
 
 Gemini Enterprise Insurance Claims Assistant is an A2A (Agent-to-Agent) agent designed to work with **Gemini Enterprise** to automate claims triage, damage verification, risk analysis, contractor mapping, and settlement workflows.
 
